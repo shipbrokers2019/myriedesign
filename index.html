@@ -535,6 +535,7 @@
       <button class="close-x" onclick="document.getElementById('modal-resumen').classList.add('hidden')">✕</button>
     </div>
     <textarea id="resumen-texto" class="msg-box" style="min-height:320px" readonly></textarea>
+    <div id="resumen-fotos" style="margin-top:10px"></div>
     <button class="btn full" style="margin-top:8px" onclick="copiarResumen()">📋 Copiar resumen</button>
   </div>
 </div>
@@ -1324,6 +1325,19 @@ function eliminarVenta(){
 }
 
 /* -------------------- 11) RESUMEN DE VENTA -------------------- */
+function renderGaleriaFotos(){
+  function grupo(titulo, lista){
+    if(!lista || lista.length === 0) return '';
+    const miniaturas = lista.map(function(f){
+      const src = (typeof f === 'string') ? f : f.data;
+      return '<a href="'+src+'" target="_blank" rel="noopener">'+
+        '<img src="'+src+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--border);margin:0 6px 6px 0"></a>';
+    }).join('');
+    return '<div style="margin-bottom:8px"><div class="hint" style="margin-bottom:4px">'+titulo+'</div><div>'+miniaturas+'</div></div>';
+  }
+  const html = grupo('📷 Producto terminado', ventaFotos.productoFinal) + grupo('📦 Guía de envío', ventaFotos.guiaEnvio);
+  document.getElementById('resumen-fotos').innerHTML = html;
+}
 function verResumenVenta(){
   const nombre = document.getElementById('v-nombre').value.trim() || '(sin nombre)';
   const cedula = document.getElementById('v-id').value.trim() || '-';
@@ -1376,6 +1390,7 @@ function verResumenVenta(){
   txt += 'Fecha aproximada de entrega: '+fmtFecha(fechaEntrega)+'\n';
 
   document.getElementById('resumen-texto').value = txt;
+  renderGaleriaFotos();
   document.getElementById('modal-resumen').classList.remove('hidden');
 }
 function copiarResumen(){ copiarTexto(document.getElementById('resumen-texto')); }
