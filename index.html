@@ -212,6 +212,17 @@
     <button class="btn secondary small" onclick="doLogout()">Salir</button>
   </div>
 
+  <!-- ---------- TASA BCV DEL DÍA (compartida, se usa en toda la app) ---------- -->
+  <div class="card" style="margin-bottom:0;padding:10px 14px;">
+    <div class="row" style="align-items:flex-end">
+      <div style="flex:1">
+        <label style="margin-top:0">Tasa BCV de hoy (se usa en toda la app)</label>
+        <input type="number" id="tasa-bcv-global" step="0.01" placeholder="0.00" oninput="guardarTasaBcvDia()">
+      </div>
+    </div>
+    <small class="hint" id="tasa-bcv-meta">Todavía no se ha cargado.</small>
+  </div>
+
   <!-- ---------- TAB: COTIZAR ---------- -->
   <div id="tab-cotizar" class="tab-content">
     <div class="card">
@@ -277,14 +288,15 @@
       <div id="cot-items-list"></div>
       <div class="total-line"><span>Total</span><span id="cot-total">$0.00</span></div>
 
-      <div class="section-title">Montos</div>
+      <div class="section-title">Montos (automáticos)</div>
+      <small class="hint">Se calculan solos a partir del Total y la Tasa BCV que pusiste arriba.</small>
       <div class="row">
         <div><label>Total $</label><input type="text" id="cot-total-2" readonly value="0.00"></div>
-        <div><label>Total Bs.</label><input type="number" id="cot-total-bs" step="0.01" placeholder="0.00"></div>
+        <div><label>Total Bs.</label><input type="text" id="cot-total-bs" readonly value="0.00"></div>
       </div>
       <div class="row">
-        <div><label>Monto a abonar $ (50% sugerido)</label><input type="number" id="cot-abonar" step="0.01" oninput="actualizarMontosCotizacion()"></div>
-        <div><label>Monto a abonar Bs. (auto)</label><input type="text" id="cot-abonar-bs" readonly value="0.00"></div>
+        <div><label>Monto a abonar $ (50%)</label><input type="text" id="cot-abonar" readonly value="0.00"></div>
+        <div><label>Monto a abonar Bs.</label><input type="text" id="cot-abonar-bs" readonly value="0.00"></div>
       </div>
       <label>Restante $</label>
       <input type="text" id="cot-restante" readonly value="0.00">
@@ -568,12 +580,60 @@ function initFirebase(){
       document.getElementById('user-email-label').textContent = user.email;
       cargarCotizacionesPendientes();
       cargarVentas();
+      cargarTasaBcvDia();
     } else {
       currentUser = null;
       document.getElementById('app-screen').classList.add('hidden');
       document.getElementById('login-screen').classList.remove('hidden');
     }
   });
+}
+
+/* Escucha en tiempo real el documento compartido con la Tasa BCV del día, para que
+   ambos celulares vean siempre la misma tasa sin tener que escribirla dos veces.
+   Se autocompleta en Cotizador (cot-tasa) y Abonos (ab-tasa) solo cuando esos
+   campos están vacíos, así no pisa una tasa distinta que alguien ya haya puesto
+   a mano para un caso puntual. */
+function cargarTasaBcvDia(){
+  if(!db) return;
+  db.collection('config').doc('tasaBcv').onSnapshot(function(doc){
+    const data = doc.data() || {};
+    tasaBcvDia = Number(data.valor) || 0;
+    const inputGlobal = document.getElementById('tasa-bcv-global');
+    if(inputGlobal && document.activeElement !== inputGlobal){
+      inputGlobal.value = tasaBcvDia || '';
+    }
+    const metaEl = document.getElementById('tasa-bcv-meta');
+    if(metaEl){
+      metaEl.textContent = data.fecha
+        ? 'Actualizada el '+fmtFecha(data.fecha)+(data.actualizadoPor ? ' por '+data.actualizadoPor : '')
+        : 'Todavía no se ha cargado.';
+    }
+    const cotTasa = document.getElementById('cot-tasa');
+    if(cotTasa && !cotTasa.value){
+      cotTasa.value = tasaBcvDia || '';
+      actualizarMontosCotizacion();
+    }
+    const abTasa = document.getElementById('ab-tasa');
+    if(abTasa && !abTasa.value){
+      abTasa.value = tasaBcvDia || '';
+    }
+  }, function(err){
+    console.error('No se pudo leer la Tasa BCV del día:', err);
+  });
+}
+function guardarTasaBcvDia(){
+  const val = parseFloat(document.getElementById('tasa-bcv-global').value) || 0;
+  clearTimeout(guardarTasaBcvTimeout);
+  guardarTasaBcvTimeout = setTimeout(function(){
+    if(!db || !currentUser) return;
+    db.collection('config').doc('tasaBcv').set({
+      valor: val,
+      fecha: hoyISO(),
+      actualizadoPor: currentUser.email,
+      actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }, 500);
 }
 
 /* -------------------- 2) ESTADO GLOBAL -------------------- */
@@ -589,6 +649,10 @@ let cotizacionOrigenId = null;  // si la venta viene de una cotización, guardam
 let fuentesSel = { cotNombre:'', cotAdic:'', cotFrontal:'', cotPosterior:'', vNombre:'', vAdic:'', vFrontal:'', vPosterior:'' };
 // Tipo de pieza activo en cada formulario: 'personalizado' o 'grabado'
 let tipoPiezaActual = { cot: 'personalizado', 'v-item': 'personalizado' };
+// Tasa BCV del día: compartida entre los dos celulares (Firestore), se fija una vez
+// arriba de la pantalla y se usa como valor por defecto en cotizaciones y abonos.
+let tasaBcvDia = 0;
+let guardarTasaBcvTimeout = null;
 
 /* Datos fijos del negocio para el mensaje de cotización.
    Cambiá estos valores acá si cambia el método de pago o las empresas de envío. */
@@ -634,6 +698,13 @@ function initFontGridClicks(gridId, key){
 function limpiarSeleccionFuente(gridId){
   document.querySelectorAll('#'+gridId+' .font-card').forEach(function(c){ c.classList.remove('selected'); });
 }
+function seleccionarFuenteEnGrid(gridId, label, key){
+  if(!label) return;
+  document.querySelectorAll('#'+gridId+' .font-card').forEach(function(c){
+    c.classList.toggle('selected', c.dataset.label === label);
+  });
+  fuentesSel[key] = label;
+}
 function actualizarMuestraGrid(inputId, gridId){
   const val = document.getElementById(inputId).value.trim() || 'Nombre';
   document.querySelectorAll('#'+gridId+' [data-sample]').forEach(function(el){ el.textContent = val; });
@@ -645,6 +716,34 @@ function elegirTipoPieza(prefix, tipo){
   document.getElementById(prefix+'-fieldset-personalizado').classList.toggle('hidden', tipo!=='personalizado');
   document.getElementById(prefix+'-fieldset-grabado').classList.toggle('hidden', tipo!=='grabado');
 }
+/* Rellena visiblemente el formulario "Detalle de la pieza" del modal de Venta
+   con los datos de una pieza (usado al convertir una cotización en venta,
+   para que no haya que volver a escribir todo). */
+function precargarPiezaVenta(it){
+  if(!it) return;
+  elegirTipoPieza('v-item', it.tipo || 'personalizado');
+  document.getElementById('v-item-cadena').value = it.cadena || '';
+  document.getElementById('v-item-notas').value = it.notas || '';
+  document.getElementById('v-item-cantidad').value = it.cantidad || 1;
+  document.getElementById('v-item-precio').value = (it.precio !== undefined && it.precio !== null) ? it.precio : '';
+  if(it.tipo === 'grabado'){
+    document.getElementById('v-item-tipo-medalla').value = it.tipoMedalla || '';
+    document.getElementById('v-item-cara-frontal').value = it.caraFrontal || '';
+    document.getElementById('v-item-cara-posterior').value = it.caraPosterior || '';
+    seleccionarFuenteEnGrid('v-item-font-grid-frontal', it.tipografiaFrontal, 'vFrontal');
+    seleccionarFuenteEnGrid('v-item-font-grid-posterior', it.tipografiaPosterior, 'vPosterior');
+    actualizarMuestraGrid('v-item-cara-frontal','v-item-font-grid-frontal');
+    actualizarMuestraGrid('v-item-cara-posterior','v-item-font-grid-posterior');
+  } else {
+    document.getElementById('v-item-nombre').value = it.nombre || '';
+    document.getElementById('v-item-nombre-adic').value = it.nombreAdicional || '';
+    document.getElementById('v-item-dijes').value = it.dijes || '';
+    seleccionarFuenteEnGrid('v-item-font-grid-nombre', it.tipografiaNombre, 'vNombre');
+    seleccionarFuenteEnGrid('v-item-font-grid-adic', it.tipografiaAdicional, 'vAdic');
+    actualizarMuestraGrid('v-item-nombre','v-item-font-grid-nombre');
+    actualizarMuestraGrid('v-item-nombre-adic','v-item-font-grid-adic');
+  }
+}
 function fmtBs(n){
   return Number(n||0).toLocaleString('es-VE', { minimumFractionDigits:2, maximumFractionDigits:2 });
 }
@@ -653,7 +752,7 @@ function fmtDolar(n){
   return (v % 1 === 0) ? String(v) : v.toFixed(2);
 }
 function nombreProducto(it){
-  if(it.tipo === 'grabado') return it.caraFrontal || it.tipoMedalla || '(grabado)';
+  if(it.tipo === 'grabado') return it.caraFrontal || (it.tipoMedalla ? 'Imagen ('+it.tipoMedalla+')' : 'Imagen');
   return it.nombre || '(sin nombre)';
 }
 
@@ -721,7 +820,6 @@ function agregarItemCotizacion(){
   } else {
     item.tipoMedalla = document.getElementById('cot-tipo-medalla').value.trim();
     item.caraFrontal = document.getElementById('cot-cara-frontal').value.trim();
-    if(!item.caraFrontal){ alert('La Cara Frontal es obligatoria.'); return; }
     item.caraPosterior = document.getElementById('cot-cara-posterior').value.trim();
     item.tipografiaFrontal = fuentesSel.cotFrontal || '';
     item.tipografiaPosterior = fuentesSel.cotPosterior || '';
@@ -747,10 +845,10 @@ function quitarItemCotizacion(idx){ cotizacionItems.splice(idx,1); renderItemsCo
 function actualizarMontosCotizacion(){
   const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
   const tasa = parseFloat(document.getElementById('cot-tasa').value) || 0;
-  const abonarInput = document.getElementById('cot-abonar');
-  if(abonarInput.value === ''){ abonarInput.value = (total*0.5).toFixed(2); }
-  const abonar = parseFloat(abonarInput.value) || 0;
+  const abonar = total*0.5;
   document.getElementById('cot-total-2').value = total.toFixed(2);
+  document.getElementById('cot-total-bs').value = (total*tasa).toFixed(2);
+  document.getElementById('cot-abonar').value = abonar.toFixed(2);
   document.getElementById('cot-abonar-bs').value = (abonar*tasa).toFixed(2);
   document.getElementById('cot-restante').value = (total-abonar).toFixed(2);
 }
@@ -761,8 +859,12 @@ function generarMensajeCotizacion(){
   cotizacionItems.forEach(function(it){
     if(it.tipo === 'grabado'){
       if(it.tipoMedalla) msg += 'Tipo de medalla: '+it.tipoMedalla+'\n';
-      msg += 'Cara Frontal:\n'+it.caraFrontal+'\n';
-      if(it.tipografiaFrontal) msg += 'Tipografía: '+it.tipografiaFrontal+'\n';
+      if(it.caraFrontal){
+        msg += 'Cara Frontal:\n'+it.caraFrontal+'\n';
+        if(it.tipografiaFrontal) msg += 'Tipografía: '+it.tipografiaFrontal+'\n';
+      } else {
+        msg += 'Cara Frontal: Imagen\n';
+      }
       if(it.caraPosterior){
         msg += 'Cara Posterior:\n'+it.caraPosterior+'\n';
         if(it.tipografiaPosterior) msg += 'Tipografía: '+it.tipografiaPosterior+'\n';
@@ -832,7 +934,7 @@ function guardarCotizacion(){
     renderItemsCotizacion();
     document.getElementById('cot-referencia').value = '';
     document.getElementById('cot-fecha').value = hoyISO();
-    document.getElementById('cot-tasa').value = '';
+    document.getElementById('cot-tasa').value = tasaBcvDia || '';
     document.getElementById('cot-total-bs').value = '';
     document.getElementById('cot-abonar').value = '';
     document.getElementById('cot-mensaje-wrap').classList.add('hidden');
@@ -962,7 +1064,11 @@ function abrirFormVenta(id, cotizacionPrellenada){
     document.getElementById('v-fecha-envio').value = '';
     document.getElementById('v-total-bs').value = '';
     if(cotizacionPrellenada){
-      ventaItems = JSON.parse(JSON.stringify(cotizacionPrellenada.items));
+      // La primera pieza se precarga en el formulario "Detalle de la pieza" (ver más abajo,
+      // después de limpiarCamposPiezaVenta) en vez de agregarse directo a la lista, para que
+      // se vea rellenada y el usuario confirme con "+ Agregar pieza". El resto de piezas
+      // (si la cotización tenía más de una) sí se agregan directo a la lista.
+      ventaItems = JSON.parse(JSON.stringify(cotizacionPrellenada.items.slice(1)));
       document.getElementById('v-celular').value = cotizacionPrellenada.referencia || '';
       if(cotizacionPrellenada.totalBs !== undefined && cotizacionPrellenada.totalBs !== null){
         document.getElementById('v-total-bs').value = cotizacionPrellenada.totalBs;
@@ -979,7 +1085,12 @@ function abrirFormVenta(id, cotizacionPrellenada){
   }
   // limpiar el formulario de "agregar pieza" y la selección de tipografía
   limpiarCamposPiezaVenta();
-  document.getElementById('ab-tasa').value = '';
+  if(cotizacionPrellenada && cotizacionPrellenada.items && cotizacionPrellenada.items.length){
+    // Rellenamos el formulario con la primera pieza de la cotización para que no haya
+    // que volver a escribirla; el usuario confirma tocando "+ Agregar pieza a la venta".
+    precargarPiezaVenta(cotizacionPrellenada.items[0]);
+  }
+  document.getElementById('ab-tasa').value = tasaBcvDia || '';
   document.getElementById('ab-monto').value = '';
   document.getElementById('ab-monto-bs').value = '0.00';
   onStatusChange();
@@ -1037,7 +1148,6 @@ function agregarItemVenta(){
   } else {
     item.tipoMedalla = document.getElementById('v-item-tipo-medalla').value.trim();
     item.caraFrontal = document.getElementById('v-item-cara-frontal').value.trim();
-    if(!item.caraFrontal){ alert('La Cara Frontal es obligatoria.'); return; }
     item.caraPosterior = document.getElementById('v-item-cara-posterior').value.trim();
     item.tipografiaFrontal = fuentesSel.vFrontal || '';
     item.tipografiaPosterior = fuentesSel.vPosterior || '';
