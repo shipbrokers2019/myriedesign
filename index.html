@@ -11,6 +11,11 @@
 <meta name="theme-color" content="#121212">
 <link rel="icon" href="icon-192.png">
 
+<!-- Fuentes gratis para la vista previa de grabado (Google Fonts) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Allura&family=Dancing+Script&family=Great+Vibes&family=Pacifico&family=Parisienne&family=Rouge+Script&family=Sacramento&family=Satisfy&family=Tangerine&family=Yesteryear&display=swap" rel="stylesheet">
+
 <!-- Firebase (gratis, plan Spark) -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -166,6 +171,14 @@
   .prod-row select{flex:2;}
   .prod-row input{flex:1;}
   small.hint{color:var(--muted);font-size:.72rem;display:block;margin-top:4px;}
+  .font-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;}
+  .font-card{
+    background:var(--bg3);border:2px solid var(--border);border-radius:8px;
+    padding:10px 6px;text-align:center;cursor:pointer;
+  }
+  .font-card.selected{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold);}
+  .font-sample{margin:0;font-size:1.35rem;color:var(--text);overflow-wrap:break-word;line-height:1.3;}
+  .font-card-label{margin-top:4px;font-size:.65rem;color:var(--muted);}
 </style>
 </head>
 <body>
@@ -208,18 +221,26 @@
       <label>Referencia (Instagram, apodo, nº de WhatsApp...)</label>
       <input type="text" id="cot-referencia" placeholder="Ej: IG @juanita / +58 412...">
 
-      <div class="section-title">Agregar producto</div>
-      <div class="prod-row">
-        <div style="flex:2">
-          <label>Producto</label>
-          <select id="cot-select-producto"></select>
-        </div>
-        <div style="flex:1">
-          <label>Cant.</label>
-          <input type="number" id="cot-cantidad" value="1" min="1">
-        </div>
+      <div class="section-title">Detalle de la pieza</div>
+      <label>Cadena</label>
+      <input type="text" id="cot-cadena" placeholder="Ej: Ristra, cadena cubana...">
+      <div class="row">
+        <div><label>Nombre a grabar</label><input type="text" id="cot-nombre" oninput="actualizarMuestraFuentes('cot')"></div>
+        <div><label>Nombre adicional</label><input type="text" id="cot-nombre-adic" oninput="actualizarMuestraFuentes('cot')"></div>
       </div>
-      <button class="btn secondary full" style="margin-top:8px" onclick="agregarItemCotizacion()">+ Agregar a la cotización</button>
+      <label>Dijes</label>
+      <input type="text" id="cot-dijes" placeholder="Ej: corazón, inicial...">
+      <div class="row">
+        <div><label>Cantidad</label><input type="number" id="cot-cantidad" value="1" min="1"></div>
+        <div><label>Precio $ (c/u)</label><input type="number" id="cot-precio" step="0.01"></div>
+      </div>
+      <label>Notas</label>
+      <textarea id="cot-notas" rows="2"></textarea>
+
+      <label>Tipografía (tocá una para elegirla)</label>
+      <div class="font-grid" id="cot-font-grid"></div>
+
+      <button class="btn secondary full" style="margin-top:8px" onclick="agregarItemCotizacion()">+ Agregar pieza a la cotización</button>
 
       <div id="cot-items-list"></div>
       <div class="total-line"><span>Total</span><span id="cot-total">$0.00</span></div>
@@ -230,6 +251,7 @@
         <label>Mensaje (tocá para copiar)</label>
         <textarea id="cot-mensaje" class="msg-box" readonly></textarea>
         <button class="btn secondary full" style="margin-top:6px" onclick="copiarMensajeCotizacion()">📋 Copiar mensaje</button>
+        <button class="btn full" style="margin-top:6px;background:#25D366;color:#fff" onclick="enviarWhatsAppCotizacion()">💬 Enviar por WhatsApp</button>
       </div>
 
       <button class="btn full" style="margin-top:10px;background:var(--success);color:#fff" onclick="guardarCotizacion()">✓ Guardar cotización</button>
@@ -315,27 +337,10 @@
     </div>
   </div>
 
-  <!-- ---------- TAB: CATALOGO ---------- -->
-  <div id="tab-catalogo" class="tab-content hidden">
-    <div class="card">
-      <h2>Agregar producto</h2>
-      <label>Nombre</label>
-      <input type="text" id="cat-nombre" placeholder="Ej: Pulsera baño de oro">
-      <label>Precio $</label>
-      <input type="number" id="cat-precio" step="0.01" placeholder="0.00">
-      <button class="btn full" style="margin-top:10px" onclick="agregarProductoCatalogo()">+ Agregar al catálogo</button>
-    </div>
-    <div class="card">
-      <h2>Catálogo actual</h2>
-      <div id="catalogo-list"><div class="empty-state">Cargando...</div></div>
-    </div>
-  </div>
-
   <nav class="tabs">
     <button id="navbtn-cotizar" class="active" onclick="mostrarTab('cotizar')"><span class="ic">🧾</span>Cotizar</button>
     <button id="navbtn-ventas" onclick="mostrarTab('ventas')"><span class="ic">💰</span>Ventas</button>
     <button id="navbtn-reportes" onclick="mostrarTab('reportes')"><span class="ic">📊</span>Reportes</button>
-    <button id="navbtn-catalogo" onclick="mostrarTab('catalogo')"><span class="ic">🏷️</span>Catálogo</button>
   </nav>
 </div>
 
@@ -359,20 +364,31 @@
     <label>Dirección de envío</label>
     <textarea id="v-direccion-envio" rows="2"></textarea>
 
-    <div class="section-title">Productos</div>
-    <div class="prod-row">
-      <div style="flex:2">
-        <label>Producto</label>
-        <select id="v-select-producto"></select>
-      </div>
-      <div style="flex:1">
-        <label>Cant.</label>
-        <input type="number" id="v-cantidad" value="1" min="1">
-      </div>
+    <div class="section-title">Detalle de la pieza</div>
+    <label>Cadena</label>
+    <input type="text" id="v-item-cadena" placeholder="Ej: Ristra, cadena cubana...">
+    <div class="row">
+      <div><label>Nombre a grabar</label><input type="text" id="v-item-nombre" oninput="actualizarMuestraFuentes('v-item')"></div>
+      <div><label>Nombre adicional</label><input type="text" id="v-item-nombre-adic" oninput="actualizarMuestraFuentes('v-item')"></div>
     </div>
-    <button class="btn secondary full" style="margin-top:8px" onclick="agregarItemVenta()">+ Agregar producto</button>
+    <label>Dijes</label>
+    <input type="text" id="v-item-dijes" placeholder="Ej: corazón, inicial...">
+    <div class="row">
+      <div><label>Cantidad</label><input type="number" id="v-item-cantidad" value="1" min="1"></div>
+      <div><label>Precio $ (c/u)</label><input type="number" id="v-item-precio" step="0.01"></div>
+    </div>
+    <label>Notas</label>
+    <textarea id="v-item-notas" rows="2"></textarea>
+
+    <label>Tipografía (tocá una para elegirla)</label>
+    <div class="font-grid" id="v-item-font-grid"></div>
+
+    <button class="btn secondary full" style="margin-top:8px" onclick="agregarItemVenta()">+ Agregar pieza</button>
     <div id="v-items-list"></div>
     <div class="total-line"><span>Total</span><span id="v-total">$0.00</span></div>
+
+    <label>Total Bs. (opcional)</label>
+    <input type="number" id="v-total-bs" step="0.01" placeholder="0.00">
 
     <div class="section-title">Fechas y status</div>
     <div class="row">
@@ -394,7 +410,11 @@
     <div class="section-title">Abonos</div>
     <div class="row">
       <div><label>Fecha</label><input type="date" id="ab-fecha"></div>
-      <div><label>Monto $</label><input type="number" id="ab-monto" step="0.01"></div>
+      <div><label>Tasa BCV</label><input type="number" id="ab-tasa" step="0.01" oninput="previsualizarAbonoBs()"></div>
+    </div>
+    <div class="row">
+      <div><label>Monto $</label><input type="number" id="ab-monto" step="0.01" oninput="previsualizarAbonoBs()"></div>
+      <div><label>Abono Bs. (auto)</label><input type="text" id="ab-monto-bs" readonly value="0.00"></div>
     </div>
     <button class="btn secondary full" style="margin-top:8px" onclick="agregarAbono()">+ Agregar abono</button>
     <div id="v-abonos-list"></div>
@@ -475,7 +495,6 @@ function initFirebase(){
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('app-screen').classList.remove('hidden');
       document.getElementById('user-email-label').textContent = user.email;
-      cargarCatalogo();
       cargarCotizacionesPendientes();
       cargarVentas();
     } else {
@@ -488,7 +507,6 @@ function initFirebase(){
 
 /* -------------------- 2) ESTADO GLOBAL -------------------- */
 let currentUser = null;
-let catalogo = [];              // [{id, nombre, precio}]
 let cotizacionItems = [];       // items de la cotización en construcción
 let todasLasVentas = [];        // cache local de ventas para filtros de reporte
 let ventaActualId = null;       // id de la venta que se está editando (null = nueva)
@@ -496,6 +514,55 @@ let ventaItems = [];            // items de la venta en el modal
 let ventaAbonos = [];           // abonos de la venta en el modal
 let ventaFotos = { productoFinal: [], guiaEnvio: [] };
 let cotizacionOrigenId = null;  // si la venta viene de una cotización, guardamos su id
+let cotFuenteSeleccionada = ''; // tipografía elegida en el cotizador (pieza actual)
+let vItemFuenteSeleccionada = ''; // tipografía elegida en el modal de venta (pieza actual)
+
+/* Tipografías de vista previa para el grabado del nombre.
+   Nota: son fuentes gratis de Google Fonts con estilo similar a las 11
+   fuentes originales (Adelia, Ananda, etc.) — no son los archivos exactos
+   porque esos viven en tu computadora y no los subiste. Si querés las
+   fuentes exactas, subime los 11 archivos .ttf/.otf y las reemplazo. */
+const FONTS = [
+  { label: 'Adelia',               family: "'Rouge Script', cursive" },
+  { label: 'Ananda',                family: "'Alex Brush', cursive" },
+  { label: 'Birds of Paradise',     family: "'Parisienne', cursive" },
+  { label: 'Cream Cake',            family: "'Sacramento', cursive" },
+  { label: 'Daily',                 family: "'Dancing Script', cursive" },
+  { label: 'Floraison des Amours',  family: "'Allura', cursive" },
+  { label: 'Joseph Sophia',         family: "'Tangerine', cursive" },
+  { label: 'Madina',                family: "'Great Vibes', cursive" },
+  { label: 'Nova Quinta',           family: "'Satisfy', cursive" },
+  { label: 'Sephora Hayden',        family: "'Yesteryear', cursive" },
+  { label: 'Tempting',              family: "'Pacifico', cursive" }
+];
+
+function construirGridFuentes(gridId){
+  const el = document.getElementById(gridId);
+  el.innerHTML = FONTS.map(function(f){
+    return '<div class="font-card" data-label="'+escapeHtml(f.label)+'">'+
+      '<div class="font-sample" style="font-family:'+f.family+'" data-sample>Nombre</div>'+
+      '<div class="font-card-label">'+escapeHtml(f.label)+'</div></div>';
+  }).join('');
+}
+function initFontGridClicks(gridId, prefix){
+  document.getElementById(gridId).addEventListener('click', function(e){
+    const card = e.target.closest('.font-card');
+    if(!card) return;
+    this.querySelectorAll('.font-card').forEach(function(c){ c.classList.remove('selected'); });
+    card.classList.add('selected');
+    if(prefix === 'cot') cotFuenteSeleccionada = card.dataset.label;
+    else vItemFuenteSeleccionada = card.dataset.label;
+  });
+}
+function limpiarSeleccionFuente(gridId){
+  document.querySelectorAll('#'+gridId+' .font-card').forEach(function(c){ c.classList.remove('selected'); });
+}
+function actualizarMuestraFuentes(prefix){
+  const nombreEl = document.getElementById(prefix+'-nombre');
+  const adicEl = document.getElementById(prefix+'-nombre-adic');
+  const texto = [nombreEl?nombreEl.value.trim():'', adicEl?adicEl.value.trim():''].filter(Boolean).join(' ') || 'Nombre';
+  document.querySelectorAll('#'+prefix+'-font-grid [data-sample]').forEach(function(el){ el.textContent = texto; });
+}
 
 /* -------------------- 3) LOGIN / LOGOUT -------------------- */
 function doLogin(){
@@ -512,66 +579,51 @@ function doLogout(){ auth.signOut(); }
 
 /* -------------------- 4) NAVEGACIÓN DE PESTAÑAS -------------------- */
 function mostrarTab(nombre){
-  ['cotizar','ventas','reportes','catalogo'].forEach(function(t){
+  ['cotizar','ventas','reportes'].forEach(function(t){
     document.getElementById('tab-'+t).classList.toggle('hidden', t !== nombre);
     document.getElementById('navbtn-'+t).classList.toggle('active', t === nombre);
   });
   if(nombre === 'reportes'){ aplicarFiltrosReporte(); }
 }
 
-/* -------------------- 5) CATÁLOGO -------------------- */
-function cargarCatalogo(){
-  db.collection('catalogo').orderBy('nombre').onSnapshot(function(snap){
-    catalogo = [];
-    snap.forEach(function(doc){ catalogo.push(Object.assign({id: doc.id}, doc.data())); });
-    renderCatalogoSelects();
-    renderCatalogoLista();
-  });
-}
-function renderCatalogoSelects(){
-  const opciones = catalogo.map(function(p){
-    return '<option value="'+p.id+'">'+escapeHtml(p.nombre)+' - $'+Number(p.precio).toFixed(2)+'</option>';
-  }).join('');
-  document.getElementById('cot-select-producto').innerHTML = opciones || '<option value="">(agregá productos en Catálogo)</option>';
-  document.getElementById('v-select-producto').innerHTML = opciones || '<option value="">(agregá productos en Catálogo)</option>';
-}
-function renderCatalogoLista(){
-  const el = document.getElementById('catalogo-list');
-  if(catalogo.length === 0){ el.innerHTML = '<div class="empty-state">Todavía no agregaste productos.</div>'; return; }
-  el.innerHTML = catalogo.map(function(p){
-    return '<div class="item-row"><span>'+escapeHtml(p.nombre)+' — $'+Number(p.precio).toFixed(2)+'</span>'+
-      '<span class="x" onclick="eliminarProductoCatalogo(\''+p.id+'\')">✕</span></div>';
-  }).join('');
-}
-function agregarProductoCatalogo(){
-  const nombre = document.getElementById('cat-nombre').value.trim();
-  const precio = parseFloat(document.getElementById('cat-precio').value);
-  if(!nombre || isNaN(precio) || precio < 0){ alert('Completá nombre y precio válidos.'); return; }
-  db.collection('catalogo').add({ nombre: nombre, precio: precio }).then(function(){
-    document.getElementById('cat-nombre').value = '';
-    document.getElementById('cat-precio').value = '';
-  });
-}
-function eliminarProductoCatalogo(id){
-  if(!confirm('¿Eliminar este producto del catálogo?')) return;
-  db.collection('catalogo').doc(id).delete();
+function detalleItem(it){
+  return [it.cadena, it.dijes, it.tipografia ? ('Fuente: '+it.tipografia) : ''].filter(Boolean).join(' · ');
 }
 
 /* -------------------- 6) COTIZADOR -------------------- */
 function agregarItemCotizacion(){
-  const sel = document.getElementById('cot-select-producto');
-  const prodId = sel.value;
-  const prod = catalogo.find(function(p){ return p.id === prodId; });
-  if(!prod){ alert('Elegí un producto del catálogo.'); return; }
+  const nombre = document.getElementById('cot-nombre').value.trim();
+  if(!nombre){ alert('El nombre a grabar es obligatorio.'); return; }
   const cantidad = parseInt(document.getElementById('cot-cantidad').value) || 1;
-  cotizacionItems.push({ nombre: prod.nombre, precio: prod.precio, cantidad: cantidad });
+  const precio = parseFloat(document.getElementById('cot-precio').value) || 0;
+  cotizacionItems.push({
+    cadena: document.getElementById('cot-cadena').value.trim(),
+    nombre: nombre,
+    nombreAdicional: document.getElementById('cot-nombre-adic').value.trim(),
+    dijes: document.getElementById('cot-dijes').value.trim(),
+    notas: document.getElementById('cot-notas').value.trim(),
+    cantidad: cantidad,
+    precio: precio,
+    tipografia: cotFuenteSeleccionada || ''
+  });
+  document.getElementById('cot-cadena').value = '';
+  document.getElementById('cot-nombre').value = '';
+  document.getElementById('cot-nombre-adic').value = '';
+  document.getElementById('cot-dijes').value = '';
+  document.getElementById('cot-cantidad').value = 1;
+  document.getElementById('cot-precio').value = '';
+  document.getElementById('cot-notas').value = '';
+  cotFuenteSeleccionada = '';
+  limpiarSeleccionFuente('cot-font-grid');
+  actualizarMuestraFuentes('cot');
   renderItemsCotizacion();
 }
 function renderItemsCotizacion(){
   const el = document.getElementById('cot-items-list');
   el.innerHTML = cotizacionItems.map(function(it, idx){
     const subtotal = it.precio * it.cantidad;
-    return '<div class="item-row"><span>'+it.cantidad+' x '+escapeHtml(it.nombre)+' — $'+subtotal.toFixed(2)+'</span>'+
+    const detalle = detalleItem(it);
+    return '<div class="item-row"><span>'+it.cantidad+'x '+escapeHtml(it.nombre)+(detalle?' — '+escapeHtml(detalle):'')+' — $'+subtotal.toFixed(2)+'</span>'+
       '<span class="x" onclick="quitarItemCotizacion('+idx+')">✕</span></div>';
   }).join('');
   const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
@@ -580,18 +632,31 @@ function renderItemsCotizacion(){
 function quitarItemCotizacion(idx){ cotizacionItems.splice(idx,1); renderItemsCotizacion(); }
 
 function generarMensajeCotizacion(){
-  if(cotizacionItems.length === 0){ alert('Agregá al menos un producto.'); return; }
+  if(cotizacionItems.length === 0){ alert('Agregá al menos una pieza.'); return; }
   let msg = 'Myriedesign te cotiza:\n\n';
-  cotizacionItems.forEach(function(it){
-    msg += '• '+it.cantidad+' x '+it.nombre+' — $'+(it.precio*it.cantidad).toFixed(2)+'\n';
+  cotizacionItems.forEach(function(it, idx){
+    msg += 'Pieza '+(idx+1)+':\n';
+    msg += '  Nombre: '+it.nombre+'\n';
+    if(it.nombreAdicional) msg += '  Nombre adicional: '+it.nombreAdicional+'\n';
+    if(it.cadena) msg += '  Cadena: '+it.cadena+'\n';
+    if(it.dijes) msg += '  Dijes: '+it.dijes+'\n';
+    if(it.tipografia) msg += '  Tipografía: '+it.tipografia+'\n';
+    if(it.notas) msg += '  Notas: '+it.notas+'\n';
+    msg += '  Cantidad: '+it.cantidad+'\n';
+    msg += '  Precio: $'+it.precio.toFixed(2)+' c/u — Subtotal $'+(it.precio*it.cantidad).toFixed(2)+'\n\n';
   });
   const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
-  msg += '\nTotal: $'+total.toFixed(2);
+  msg += 'Total: $'+total.toFixed(2);
   msg += '\n\nTiempo estimado de entrega: 15 días luego de confirmar la compra.\n¿Deseas confirmar tu pedido? 😊';
   document.getElementById('cot-mensaje').value = msg;
   document.getElementById('cot-mensaje-wrap').classList.remove('hidden');
 }
 function copiarMensajeCotizacion(){ copiarTexto(document.getElementById('cot-mensaje')); }
+function enviarWhatsAppCotizacion(){
+  const msg = document.getElementById('cot-mensaje').value;
+  if(!msg){ alert('Generá el mensaje primero.'); return; }
+  window.open('https://wa.me/?text='+encodeURIComponent(msg), '_blank');
+}
 
 function guardarCotizacion(){
   if(cotizacionItems.length === 0){ alert('Agregá al menos un producto antes de guardar.'); return; }
@@ -715,6 +780,7 @@ function abrirFormVenta(id, cotizacionPrellenada){
     document.getElementById('v-fecha-entrega').value = v.fechaEntrega || '';
     document.getElementById('v-status').value = v.status || 'Aprobado';
     document.getElementById('v-fecha-envio').value = v.fechaEnvio || '';
+    document.getElementById('v-total-bs').value = (v.totalBs !== undefined && v.totalBs !== null) ? v.totalBs : '';
     ventaItems = JSON.parse(JSON.stringify(v.items || []));
     ventaAbonos = JSON.parse(JSON.stringify(v.abonos || []));
     ventaFotos = JSON.parse(JSON.stringify(v.fotos || { productoFinal: [], guiaEnvio: [] }));
@@ -731,11 +797,26 @@ function abrirFormVenta(id, cotizacionPrellenada){
     document.getElementById('v-fecha-entrega').value = sumarDias(fv, 15);
     document.getElementById('v-status').value = 'Aprobado';
     document.getElementById('v-fecha-envio').value = '';
+    document.getElementById('v-total-bs').value = '';
     if(cotizacionPrellenada){
       ventaItems = JSON.parse(JSON.stringify(cotizacionPrellenada.items));
       document.getElementById('v-celular').value = cotizacionPrellenada.referencia || '';
     }
   }
+  // limpiar el formulario de "agregar pieza" y la selección de tipografía
+  document.getElementById('v-item-cadena').value = '';
+  document.getElementById('v-item-nombre').value = '';
+  document.getElementById('v-item-nombre-adic').value = '';
+  document.getElementById('v-item-dijes').value = '';
+  document.getElementById('v-item-cantidad').value = 1;
+  document.getElementById('v-item-precio').value = '';
+  document.getElementById('v-item-notas').value = '';
+  document.getElementById('ab-tasa').value = '';
+  document.getElementById('ab-monto').value = '';
+  document.getElementById('ab-monto-bs').value = '0.00';
+  vItemFuenteSeleccionada = '';
+  limpiarSeleccionFuente('v-item-font-grid');
+  actualizarMuestraFuentes('v-item');
   onStatusChange();
   renderItemsVenta();
   renderAbonosVenta();
@@ -758,11 +839,30 @@ function onStatusChange(){
 }
 
 function agregarItemVenta(){
-  const sel = document.getElementById('v-select-producto');
-  const prod = catalogo.find(function(p){ return p.id === sel.value; });
-  if(!prod){ alert('Elegí un producto del catálogo.'); return; }
-  const cantidad = parseInt(document.getElementById('v-cantidad').value) || 1;
-  ventaItems.push({ nombre: prod.nombre, precio: prod.precio, cantidad: cantidad });
+  const nombre = document.getElementById('v-item-nombre').value.trim();
+  if(!nombre){ alert('El nombre a grabar es obligatorio.'); return; }
+  const cantidad = parseInt(document.getElementById('v-item-cantidad').value) || 1;
+  const precio = parseFloat(document.getElementById('v-item-precio').value) || 0;
+  ventaItems.push({
+    cadena: document.getElementById('v-item-cadena').value.trim(),
+    nombre: nombre,
+    nombreAdicional: document.getElementById('v-item-nombre-adic').value.trim(),
+    dijes: document.getElementById('v-item-dijes').value.trim(),
+    notas: document.getElementById('v-item-notas').value.trim(),
+    cantidad: cantidad,
+    precio: precio,
+    tipografia: vItemFuenteSeleccionada || ''
+  });
+  document.getElementById('v-item-cadena').value = '';
+  document.getElementById('v-item-nombre').value = '';
+  document.getElementById('v-item-nombre-adic').value = '';
+  document.getElementById('v-item-dijes').value = '';
+  document.getElementById('v-item-cantidad').value = 1;
+  document.getElementById('v-item-precio').value = '';
+  document.getElementById('v-item-notas').value = '';
+  vItemFuenteSeleccionada = '';
+  limpiarSeleccionFuente('v-item-font-grid');
+  actualizarMuestraFuentes('v-item');
   renderItemsVenta();
 }
 function quitarItemVenta(idx){ ventaItems.splice(idx,1); renderItemsVenta(); }
@@ -770,26 +870,36 @@ function renderItemsVenta(){
   const el = document.getElementById('v-items-list');
   el.innerHTML = ventaItems.map(function(it, idx){
     const subtotal = it.precio*it.cantidad;
-    return '<div class="item-row"><span>'+it.cantidad+' x '+escapeHtml(it.nombre)+' — $'+subtotal.toFixed(2)+'</span>'+
+    const detalle = detalleItem(it);
+    return '<div class="item-row"><span>'+it.cantidad+'x '+escapeHtml(it.nombre)+(detalle?' — '+escapeHtml(detalle):'')+' — $'+subtotal.toFixed(2)+'</span>'+
       '<span class="x" onclick="quitarItemVenta('+idx+')">✕</span></div>';
   }).join('');
   const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
   document.getElementById('v-total').textContent = '$'+total.toFixed(2);
   recalcularSaldoModal();
 }
+function previsualizarAbonoBs(){
+  const tasa = parseFloat(document.getElementById('ab-tasa').value) || 0;
+  const monto = parseFloat(document.getElementById('ab-monto').value) || 0;
+  document.getElementById('ab-monto-bs').value = (tasa*monto).toFixed(2);
+}
 function agregarAbono(){
   const fecha = document.getElementById('ab-fecha').value || hoyISO();
+  const tasa = parseFloat(document.getElementById('ab-tasa').value) || 0;
   const monto = parseFloat(document.getElementById('ab-monto').value);
   if(isNaN(monto) || monto <= 0){ alert('Ingresá un monto válido.'); return; }
-  ventaAbonos.push({ fecha: fecha, monto: monto });
+  const montoBs = tasa*monto;
+  ventaAbonos.push({ fecha: fecha, tasaBcv: tasa, monto: monto, montoBs: montoBs });
   document.getElementById('ab-monto').value = '';
+  document.getElementById('ab-monto-bs').value = '0.00';
   renderAbonosVenta();
 }
 function quitarAbono(idx){ ventaAbonos.splice(idx,1); renderAbonosVenta(); }
 function renderAbonosVenta(){
   const el = document.getElementById('v-abonos-list');
   el.innerHTML = ventaAbonos.map(function(a, idx){
-    return '<div class="abono-row"><span>'+fmtFecha(a.fecha)+' — $'+Number(a.monto).toFixed(2)+'</span>'+
+    const bsTxt = a.tasaBcv ? ' (Bs. '+Number(a.montoBs||0).toFixed(2)+' @ '+Number(a.tasaBcv).toFixed(2)+')' : '';
+    return '<div class="abono-row"><span>'+fmtFecha(a.fecha)+' — $'+Number(a.monto).toFixed(2)+bsTxt+'</span>'+
       '<span class="x" onclick="quitarAbono('+idx+')">✕</span></div>';
   }).join('');
   recalcularSaldoModal();
@@ -845,6 +955,7 @@ function guardarVenta(){
     fechaEntrega: document.getElementById('v-fecha-entrega').value,
     status: document.getElementById('v-status').value,
     fechaEnvio: document.getElementById('v-fecha-envio').value || null,
+    totalBs: (function(){ const v = parseFloat(document.getElementById('v-total-bs').value); return isNaN(v) ? null : v; })(),
     abonos: ventaAbonos,
     fotos: ventaFotos,
     actualizadoPor: currentUser.email,
@@ -891,14 +1002,26 @@ function verResumenVenta(){
   txt += 'Cédula/ID: '+cedula+'\n';
   txt += 'Celular: '+celular+'\n';
   txt += 'Fecha de venta: '+fmtFecha(fechaVenta)+'\n\n';
-  txt += 'Producto(s):\n';
-  ventaItems.forEach(function(it){
-    txt += '  • '+it.cantidad+' x '+it.nombre+' — $'+it.precio.toFixed(2)+' c/u — Subtotal $'+(it.precio*it.cantidad).toFixed(2)+'\n';
+  txt += 'Pieza(s):\n';
+  ventaItems.forEach(function(it, idx){
+    txt += '  Pieza '+(idx+1)+':\n';
+    txt += '    Nombre: '+it.nombre+'\n';
+    if(it.nombreAdicional) txt += '    Nombre adicional: '+it.nombreAdicional+'\n';
+    if(it.cadena) txt += '    Cadena: '+it.cadena+'\n';
+    if(it.dijes) txt += '    Dijes: '+it.dijes+'\n';
+    if(it.tipografia) txt += '    Tipografía: '+it.tipografia+'\n';
+    if(it.notas) txt += '    Notas: '+it.notas+'\n';
+    txt += '    Cantidad: '+it.cantidad+' — Precio $'+it.precio.toFixed(2)+' c/u — Subtotal $'+(it.precio*it.cantidad).toFixed(2)+'\n';
   });
-  txt += '\nTotal: $'+total.toFixed(2)+'\n\n';
-  txt += 'Abonos:\n';
+  txt += '\nTotal: $'+total.toFixed(2)+'\n';
+  const totalBsVal = parseFloat(document.getElementById('v-total-bs').value);
+  if(!isNaN(totalBsVal)) txt += 'Total Bs.: '+totalBsVal.toFixed(2)+'\n';
+  txt += '\nAbonos:\n';
   if(ventaAbonos.length === 0){ txt += '  (sin abonos registrados)\n'; }
-  ventaAbonos.forEach(function(a){ txt += '  • '+fmtFecha(a.fecha)+' — $'+Number(a.monto).toFixed(2)+'\n'; });
+  ventaAbonos.forEach(function(a){
+    const bsTxt = a.tasaBcv ? ' (Bs. '+Number(a.montoBs||0).toFixed(2)+' @ tasa '+Number(a.tasaBcv).toFixed(2)+')' : '';
+    txt += '  • '+fmtFecha(a.fecha)+' — $'+Number(a.monto).toFixed(2)+bsTxt+'\n';
+  });
   txt += '\nTotal abonado: $'+abonado.toFixed(2)+'\n';
   txt += 'Saldo pendiente: $'+saldo.toFixed(2)+'\n\n';
   txt += 'Status: '+status+'\n';
@@ -988,6 +1111,10 @@ function copiarTexto(textareaEl){
 }
 
 /* -------------------- 14) ARRANQUE -------------------- */
+construirGridFuentes('cot-font-grid');
+construirGridFuentes('v-item-font-grid');
+initFontGridClicks('cot-font-grid', 'cot');
+initFontGridClicks('v-item-font-grid', 'v-item');
 initFirebase();
 </script>
 </body>
