@@ -221,29 +221,73 @@
       <label>Referencia (Instagram, apodo, nº de WhatsApp...)</label>
       <input type="text" id="cot-referencia" placeholder="Ej: IG @juanita / +58 412...">
 
+      <div class="row">
+        <div><label>Fecha</label><input type="date" id="cot-fecha"></div>
+        <div><label>Tasa BCV</label><input type="number" id="cot-tasa" step="0.01" oninput="actualizarMontosCotizacion()"></div>
+      </div>
+
       <div class="section-title">Detalle de la pieza</div>
       <label>Cadena</label>
       <input type="text" id="cot-cadena" placeholder="Ej: Ristra, cadena cubana...">
-      <div class="row">
-        <div><label>Nombre a grabar</label><input type="text" id="cot-nombre" oninput="actualizarMuestraFuentes('cot')"></div>
-        <div><label>Nombre adicional</label><input type="text" id="cot-nombre-adic" oninput="actualizarMuestraFuentes('cot')"></div>
+
+      <div class="row" style="margin-top:10px">
+        <button type="button" class="btn full" id="cot-tipo-personalizado" onclick="elegirTipoPieza('cot','personalizado')">Personalizado</button>
+        <button type="button" class="btn secondary full" id="cot-tipo-grabado" onclick="elegirTipoPieza('cot','grabado')">Grabado</button>
       </div>
-      <label>Dijes</label>
-      <input type="text" id="cot-dijes" placeholder="Ej: corazón, inicial...">
+
+      <div id="cot-fieldset-personalizado">
+        <label>Nombre a grabar</label>
+        <input type="text" id="cot-nombre" oninput="actualizarMuestraGrid('cot-nombre','cot-font-grid-nombre')">
+        <label>Tipografía del nombre (tocá una para elegirla)</label>
+        <div class="font-grid" id="cot-font-grid-nombre"></div>
+
+        <label>Nombre adicional</label>
+        <input type="text" id="cot-nombre-adic" oninput="actualizarMuestraGrid('cot-nombre-adic','cot-font-grid-adic')">
+        <label>Tipografía del nombre adicional (tocá una para elegirla)</label>
+        <div class="font-grid" id="cot-font-grid-adic"></div>
+
+        <label>Dijes</label>
+        <input type="text" id="cot-dijes" placeholder="Ej: corazón, inicial...">
+      </div>
+
+      <div id="cot-fieldset-grabado" class="hidden">
+        <label>Tipo de medalla</label>
+        <input type="text" id="cot-tipo-medalla" placeholder="Ej: corazón, redonda...">
+
+        <label>Cara Frontal</label>
+        <input type="text" id="cot-cara-frontal" oninput="actualizarMuestraGrid('cot-cara-frontal','cot-font-grid-frontal')">
+        <label>Tipografía cara frontal (tocá una para elegirla)</label>
+        <div class="font-grid" id="cot-font-grid-frontal"></div>
+
+        <label>Cara Posterior</label>
+        <input type="text" id="cot-cara-posterior" oninput="actualizarMuestraGrid('cot-cara-posterior','cot-font-grid-posterior')">
+        <label>Tipografía cara posterior (tocá una para elegirla)</label>
+        <div class="font-grid" id="cot-font-grid-posterior"></div>
+      </div>
+
       <div class="row">
         <div><label>Cantidad</label><input type="number" id="cot-cantidad" value="1" min="1"></div>
-        <div><label>Precio $ (c/u)</label><input type="number" id="cot-precio" step="0.01"></div>
+        <div><label>Precio $ (c/u)</label><input type="number" id="cot-precio" step="0.01" oninput="actualizarMontosCotizacion()"></div>
       </div>
       <label>Notas</label>
       <textarea id="cot-notas" rows="2"></textarea>
-
-      <label>Tipografía (tocá una para elegirla)</label>
-      <div class="font-grid" id="cot-font-grid"></div>
 
       <button class="btn secondary full" style="margin-top:8px" onclick="agregarItemCotizacion()">+ Agregar pieza a la cotización</button>
 
       <div id="cot-items-list"></div>
       <div class="total-line"><span>Total</span><span id="cot-total">$0.00</span></div>
+
+      <div class="section-title">Montos</div>
+      <div class="row">
+        <div><label>Total $</label><input type="text" id="cot-total-2" readonly value="0.00"></div>
+        <div><label>Total Bs.</label><input type="number" id="cot-total-bs" step="0.01" placeholder="0.00"></div>
+      </div>
+      <div class="row">
+        <div><label>Monto a abonar $ (50% sugerido)</label><input type="number" id="cot-abonar" step="0.01" oninput="actualizarMontosCotizacion()"></div>
+        <div><label>Monto a abonar Bs. (auto)</label><input type="text" id="cot-abonar-bs" readonly value="0.00"></div>
+      </div>
+      <label>Restante $</label>
+      <input type="text" id="cot-restante" readonly value="0.00">
 
       <button class="btn full" style="margin-top:14px" onclick="generarMensajeCotizacion()">Generar mensaje para el cliente</button>
 
@@ -367,21 +411,48 @@
     <div class="section-title">Detalle de la pieza</div>
     <label>Cadena</label>
     <input type="text" id="v-item-cadena" placeholder="Ej: Ristra, cadena cubana...">
-    <div class="row">
-      <div><label>Nombre a grabar</label><input type="text" id="v-item-nombre" oninput="actualizarMuestraFuentes('v-item')"></div>
-      <div><label>Nombre adicional</label><input type="text" id="v-item-nombre-adic" oninput="actualizarMuestraFuentes('v-item')"></div>
+
+    <div class="row" style="margin-top:10px">
+      <button type="button" class="btn full" id="v-item-tipo-personalizado" onclick="elegirTipoPieza('v-item','personalizado')">Personalizado</button>
+      <button type="button" class="btn secondary full" id="v-item-tipo-grabado" onclick="elegirTipoPieza('v-item','grabado')">Grabado</button>
     </div>
-    <label>Dijes</label>
-    <input type="text" id="v-item-dijes" placeholder="Ej: corazón, inicial...">
+
+    <div id="v-item-fieldset-personalizado">
+      <label>Nombre a grabar</label>
+      <input type="text" id="v-item-nombre" oninput="actualizarMuestraGrid('v-item-nombre','v-item-font-grid-nombre')">
+      <label>Tipografía del nombre (tocá una para elegirla)</label>
+      <div class="font-grid" id="v-item-font-grid-nombre"></div>
+
+      <label>Nombre adicional</label>
+      <input type="text" id="v-item-nombre-adic" oninput="actualizarMuestraGrid('v-item-nombre-adic','v-item-font-grid-adic')">
+      <label>Tipografía del nombre adicional (tocá una para elegirla)</label>
+      <div class="font-grid" id="v-item-font-grid-adic"></div>
+
+      <label>Dijes</label>
+      <input type="text" id="v-item-dijes" placeholder="Ej: corazón, inicial...">
+    </div>
+
+    <div id="v-item-fieldset-grabado" class="hidden">
+      <label>Tipo de medalla</label>
+      <input type="text" id="v-item-tipo-medalla" placeholder="Ej: corazón, redonda...">
+
+      <label>Cara Frontal</label>
+      <input type="text" id="v-item-cara-frontal" oninput="actualizarMuestraGrid('v-item-cara-frontal','v-item-font-grid-frontal')">
+      <label>Tipografía cara frontal (tocá una para elegirla)</label>
+      <div class="font-grid" id="v-item-font-grid-frontal"></div>
+
+      <label>Cara Posterior</label>
+      <input type="text" id="v-item-cara-posterior" oninput="actualizarMuestraGrid('v-item-cara-posterior','v-item-font-grid-posterior')">
+      <label>Tipografía cara posterior (tocá una para elegirla)</label>
+      <div class="font-grid" id="v-item-font-grid-posterior"></div>
+    </div>
+
     <div class="row">
       <div><label>Cantidad</label><input type="number" id="v-item-cantidad" value="1" min="1"></div>
       <div><label>Precio $ (c/u)</label><input type="number" id="v-item-precio" step="0.01"></div>
     </div>
     <label>Notas</label>
     <textarea id="v-item-notas" rows="2"></textarea>
-
-    <label>Tipografía (tocá una para elegirla)</label>
-    <div class="font-grid" id="v-item-font-grid"></div>
 
     <button class="btn secondary full" style="margin-top:8px" onclick="agregarItemVenta()">+ Agregar pieza</button>
     <div id="v-items-list"></div>
@@ -514,8 +585,15 @@ let ventaItems = [];            // items de la venta en el modal
 let ventaAbonos = [];           // abonos de la venta en el modal
 let ventaFotos = { productoFinal: [], guiaEnvio: [] };
 let cotizacionOrigenId = null;  // si la venta viene de una cotización, guardamos su id
-let cotFuenteSeleccionada = ''; // tipografía elegida en el cotizador (pieza actual)
-let vItemFuenteSeleccionada = ''; // tipografía elegida en el modal de venta (pieza actual)
+// Tipografía elegida por cada campo de texto (nombre/adic/frontal/posterior) en cada formulario (cot / v)
+let fuentesSel = { cotNombre:'', cotAdic:'', cotFrontal:'', cotPosterior:'', vNombre:'', vAdic:'', vFrontal:'', vPosterior:'' };
+// Tipo de pieza activo en cada formulario: 'personalizado' o 'grabado'
+let tipoPiezaActual = { cot: 'personalizado', 'v-item': 'personalizado' };
+
+/* Datos fijos del negocio para el mensaje de cotización.
+   Cambiá estos valores acá si cambia el método de pago o las empresas de envío. */
+const PAGO_INFO = { metodo: 'Pago Movil', banco: 'Banesco', ci: '12664111', telefono: '04143939905' };
+const ENVIOS_EMPRESAS = 'MRW, ZOOM, TEALCA';
 
 /* Tipografías de vista previa para el grabado del nombre.
    Nota: son fuentes gratis de Google Fonts con estilo similar a las 11
@@ -544,24 +622,39 @@ function construirGridFuentes(gridId){
       '<div class="font-card-label">'+escapeHtml(f.label)+'</div></div>';
   }).join('');
 }
-function initFontGridClicks(gridId, prefix){
+function initFontGridClicks(gridId, key){
   document.getElementById(gridId).addEventListener('click', function(e){
     const card = e.target.closest('.font-card');
     if(!card) return;
     this.querySelectorAll('.font-card').forEach(function(c){ c.classList.remove('selected'); });
     card.classList.add('selected');
-    if(prefix === 'cot') cotFuenteSeleccionada = card.dataset.label;
-    else vItemFuenteSeleccionada = card.dataset.label;
+    fuentesSel[key] = card.dataset.label;
   });
 }
 function limpiarSeleccionFuente(gridId){
   document.querySelectorAll('#'+gridId+' .font-card').forEach(function(c){ c.classList.remove('selected'); });
 }
-function actualizarMuestraFuentes(prefix){
-  const nombreEl = document.getElementById(prefix+'-nombre');
-  const adicEl = document.getElementById(prefix+'-nombre-adic');
-  const texto = [nombreEl?nombreEl.value.trim():'', adicEl?adicEl.value.trim():''].filter(Boolean).join(' ') || 'Nombre';
-  document.querySelectorAll('#'+prefix+'-font-grid [data-sample]').forEach(function(el){ el.textContent = texto; });
+function actualizarMuestraGrid(inputId, gridId){
+  const val = document.getElementById(inputId).value.trim() || 'Nombre';
+  document.querySelectorAll('#'+gridId+' [data-sample]').forEach(function(el){ el.textContent = val; });
+}
+function elegirTipoPieza(prefix, tipo){
+  tipoPiezaActual[prefix] = tipo;
+  document.getElementById(prefix+'-tipo-personalizado').className = (tipo==='personalizado') ? 'btn full' : 'btn secondary full';
+  document.getElementById(prefix+'-tipo-grabado').className = (tipo==='grabado') ? 'btn full' : 'btn secondary full';
+  document.getElementById(prefix+'-fieldset-personalizado').classList.toggle('hidden', tipo!=='personalizado');
+  document.getElementById(prefix+'-fieldset-grabado').classList.toggle('hidden', tipo!=='grabado');
+}
+function fmtBs(n){
+  return Number(n||0).toLocaleString('es-VE', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+function fmtDolar(n){
+  const v = Math.round(Number(n||0)*100)/100;
+  return (v % 1 === 0) ? String(v) : v.toFixed(2);
+}
+function nombreProducto(it){
+  if(it.tipo === 'grabado') return it.caraFrontal || it.tipoMedalla || '(grabado)';
+  return it.nombre || '(sin nombre)';
 }
 
 /* -------------------- 3) LOGIN / LOGOUT -------------------- */
@@ -587,35 +680,54 @@ function mostrarTab(nombre){
 }
 
 function detalleItem(it){
-  return [it.cadena, it.dijes, it.tipografia ? ('Fuente: '+it.tipografia) : ''].filter(Boolean).join(' · ');
+  if(it.tipo === 'grabado'){
+    return [it.cadena, it.tipoMedalla?('Medalla: '+it.tipoMedalla):'', it.caraPosterior?('Posterior: '+it.caraPosterior):''].filter(Boolean).join(' · ');
+  }
+  return [it.cadena, it.dijes, it.tipografiaNombre?('Fuente: '+it.tipografiaNombre):''].filter(Boolean).join(' · ');
 }
 
 /* -------------------- 6) COTIZADOR -------------------- */
-function agregarItemCotizacion(){
-  const nombre = document.getElementById('cot-nombre').value.trim();
-  if(!nombre){ alert('El nombre a grabar es obligatorio.'); return; }
-  const cantidad = parseInt(document.getElementById('cot-cantidad').value) || 1;
-  const precio = parseFloat(document.getElementById('cot-precio').value) || 0;
-  cotizacionItems.push({
-    cadena: document.getElementById('cot-cadena').value.trim(),
-    nombre: nombre,
-    nombreAdicional: document.getElementById('cot-nombre-adic').value.trim(),
-    dijes: document.getElementById('cot-dijes').value.trim(),
-    notas: document.getElementById('cot-notas').value.trim(),
-    cantidad: cantidad,
-    precio: precio,
-    tipografia: cotFuenteSeleccionada || ''
+function limpiarCamposPiezaCot(){
+  ['cot-cadena','cot-nombre','cot-nombre-adic','cot-dijes','cot-tipo-medalla','cot-cara-frontal','cot-cara-posterior','cot-notas'].forEach(function(id){
+    document.getElementById(id).value = '';
   });
-  document.getElementById('cot-cadena').value = '';
-  document.getElementById('cot-nombre').value = '';
-  document.getElementById('cot-nombre-adic').value = '';
-  document.getElementById('cot-dijes').value = '';
   document.getElementById('cot-cantidad').value = 1;
   document.getElementById('cot-precio').value = '';
-  document.getElementById('cot-notas').value = '';
-  cotFuenteSeleccionada = '';
-  limpiarSeleccionFuente('cot-font-grid');
-  actualizarMuestraFuentes('cot');
+  ['cotNombre','cotAdic','cotFrontal','cotPosterior'].forEach(function(k){ fuentesSel[k] = ''; });
+  ['cot-font-grid-nombre','cot-font-grid-adic','cot-font-grid-frontal','cot-font-grid-posterior'].forEach(limpiarSeleccionFuente);
+  actualizarMuestraGrid('cot-nombre','cot-font-grid-nombre');
+  actualizarMuestraGrid('cot-nombre-adic','cot-font-grid-adic');
+  actualizarMuestraGrid('cot-cara-frontal','cot-font-grid-frontal');
+  actualizarMuestraGrid('cot-cara-posterior','cot-font-grid-posterior');
+}
+function agregarItemCotizacion(){
+  const tipo = tipoPiezaActual.cot;
+  const item = {
+    tipo: tipo,
+    cadena: document.getElementById('cot-cadena').value.trim(),
+    nombre:'', nombreAdicional:'', dijes:'', tipografiaNombre:'', tipografiaAdicional:'',
+    tipoMedalla:'', caraFrontal:'', caraPosterior:'', tipografiaFrontal:'', tipografiaPosterior:'',
+    notas: document.getElementById('cot-notas').value.trim(),
+    cantidad: parseInt(document.getElementById('cot-cantidad').value) || 1,
+    precio: parseFloat(document.getElementById('cot-precio').value) || 0
+  };
+  if(tipo === 'personalizado'){
+    item.nombre = document.getElementById('cot-nombre').value.trim();
+    if(!item.nombre){ alert('El nombre a grabar es obligatorio.'); return; }
+    item.nombreAdicional = document.getElementById('cot-nombre-adic').value.trim();
+    item.dijes = document.getElementById('cot-dijes').value.trim();
+    item.tipografiaNombre = fuentesSel.cotNombre || '';
+    item.tipografiaAdicional = fuentesSel.cotAdic || '';
+  } else {
+    item.tipoMedalla = document.getElementById('cot-tipo-medalla').value.trim();
+    item.caraFrontal = document.getElementById('cot-cara-frontal').value.trim();
+    if(!item.caraFrontal){ alert('La Cara Frontal es obligatoria.'); return; }
+    item.caraPosterior = document.getElementById('cot-cara-posterior').value.trim();
+    item.tipografiaFrontal = fuentesSel.cotFrontal || '';
+    item.tipografiaPosterior = fuentesSel.cotPosterior || '';
+  }
+  cotizacionItems.push(item);
+  limpiarCamposPiezaCot();
   renderItemsCotizacion();
 }
 function renderItemsCotizacion(){
@@ -623,31 +735,68 @@ function renderItemsCotizacion(){
   el.innerHTML = cotizacionItems.map(function(it, idx){
     const subtotal = it.precio * it.cantidad;
     const detalle = detalleItem(it);
-    return '<div class="item-row"><span>'+it.cantidad+'x '+escapeHtml(it.nombre)+(detalle?' — '+escapeHtml(detalle):'')+' — $'+subtotal.toFixed(2)+'</span>'+
+    return '<div class="item-row"><span>'+it.cantidad+'x '+escapeHtml(nombreProducto(it))+(detalle?' — '+escapeHtml(detalle):'')+' — $'+subtotal.toFixed(2)+'</span>'+
       '<span class="x" onclick="quitarItemCotizacion('+idx+')">✕</span></div>';
   }).join('');
   const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
   document.getElementById('cot-total').textContent = '$'+total.toFixed(2);
+  actualizarMontosCotizacion();
 }
 function quitarItemCotizacion(idx){ cotizacionItems.splice(idx,1); renderItemsCotizacion(); }
 
+function actualizarMontosCotizacion(){
+  const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
+  const tasa = parseFloat(document.getElementById('cot-tasa').value) || 0;
+  const abonarInput = document.getElementById('cot-abonar');
+  if(abonarInput.value === ''){ abonarInput.value = (total*0.5).toFixed(2); }
+  const abonar = parseFloat(abonarInput.value) || 0;
+  document.getElementById('cot-total-2').value = total.toFixed(2);
+  document.getElementById('cot-abonar-bs').value = (abonar*tasa).toFixed(2);
+  document.getElementById('cot-restante').value = (total-abonar).toFixed(2);
+}
+
 function generarMensajeCotizacion(){
   if(cotizacionItems.length === 0){ alert('Agregá al menos una pieza.'); return; }
-  let msg = 'Myriedesign te cotiza:\n\n';
-  cotizacionItems.forEach(function(it, idx){
-    msg += 'Pieza '+(idx+1)+':\n';
-    msg += '  Nombre: '+it.nombre+'\n';
-    if(it.nombreAdicional) msg += '  Nombre adicional: '+it.nombreAdicional+'\n';
-    if(it.cadena) msg += '  Cadena: '+it.cadena+'\n';
-    if(it.dijes) msg += '  Dijes: '+it.dijes+'\n';
-    if(it.tipografia) msg += '  Tipografía: '+it.tipografia+'\n';
-    if(it.notas) msg += '  Notas: '+it.notas+'\n';
-    msg += '  Cantidad: '+it.cantidad+'\n';
-    msg += '  Precio: $'+it.precio.toFixed(2)+' c/u — Subtotal $'+(it.precio*it.cantidad).toFixed(2)+'\n\n';
+  let msg = '';
+  cotizacionItems.forEach(function(it){
+    if(it.tipo === 'grabado'){
+      if(it.tipoMedalla) msg += 'Tipo de medalla: '+it.tipoMedalla+'\n';
+      msg += 'Cara Frontal:\n'+it.caraFrontal+'\n';
+      if(it.tipografiaFrontal) msg += 'Tipografía: '+it.tipografiaFrontal+'\n';
+      if(it.caraPosterior){
+        msg += 'Cara Posterior:\n'+it.caraPosterior+'\n';
+        if(it.tipografiaPosterior) msg += 'Tipografía: '+it.tipografiaPosterior+'\n';
+      }
+    } else {
+      msg += 'Nombre:\n'+it.nombre+'\n';
+      if(it.tipografiaNombre) msg += 'Tipografía: '+it.tipografiaNombre+'\n';
+      if(it.nombreAdicional){
+        msg += 'Nombre Adic.:\n'+it.nombreAdicional+'\n';
+        if(it.tipografiaAdicional) msg += 'Tipografía: '+it.tipografiaAdicional+'\n';
+      }
+      if(it.dijes) msg += 'Dijes: '+it.dijes+'\n';
+    }
+    if(it.cadena) msg += 'Cadena: '+it.cadena+'\n';
+    if(it.notas) msg += 'Notas: '+it.notas+'\n';
+    msg += '\n';
   });
+
   const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
-  msg += 'Total: $'+total.toFixed(2);
-  msg += '\n\nTiempo estimado de entrega: 15 días luego de confirmar la compra.\n¿Deseas confirmar tu pedido? 😊';
+  const tasa = parseFloat(document.getElementById('cot-tasa').value) || 0;
+  const abonar = parseFloat(document.getElementById('cot-abonar').value) || (total*0.5);
+  const abonarBs = abonar*tasa;
+  const fecha = document.getElementById('cot-fecha').value || hoyISO();
+
+  msg += 'Total $: '+fmtDolar(total)+'\n';
+  msg += 'Monto a Abonar para agendar 50%:\n';
+  msg += '$ '+abonar.toFixed(2)+'\n';
+  msg += 'Bs. '+fmtBs(abonarBs)+'\n\n';
+  msg += PAGO_INFO.metodo+'\n'+PAGO_INFO.banco+'\nC.I '+PAGO_INFO.ci+'\n'+PAGO_INFO.telefono+'\n\n';
+  msg += 'Realizamos envios por:\n'+ENVIOS_EMPRESAS+'\n\n';
+  msg += 'Fecha: '+fmtFecha(fecha)+'\n';
+  msg += 'Tasa BCV: '+fmtDolar(tasa)+'\n\n';
+  msg += 'Monto en Bs. Valido por el dia de hoy';
+
   document.getElementById('cot-mensaje').value = msg;
   document.getElementById('cot-mensaje-wrap').classList.remove('hidden');
 }
@@ -659,11 +808,20 @@ function enviarWhatsAppCotizacion(){
 }
 
 function guardarCotizacion(){
-  if(cotizacionItems.length === 0){ alert('Agregá al menos un producto antes de guardar.'); return; }
+  if(cotizacionItems.length === 0){ alert('Agregá al menos una pieza antes de guardar.'); return; }
   const referencia = document.getElementById('cot-referencia').value.trim();
   const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
+  const tasa = parseFloat(document.getElementById('cot-tasa').value) || 0;
+  const abonarInput = parseFloat(document.getElementById('cot-abonar').value);
+  const abonar = isNaN(abonarInput) ? (total*0.5) : abonarInput;
+  const totalBsVal = parseFloat(document.getElementById('cot-total-bs').value);
   db.collection('cotizaciones').add({
     referencia: referencia,
+    fecha: document.getElementById('cot-fecha').value || hoyISO(),
+    tasaBcv: tasa,
+    totalBs: isNaN(totalBsVal) ? null : totalBsVal,
+    abonar: abonar,
+    abonarBs: abonar*tasa,
     items: cotizacionItems,
     total: total,
     status: 'Cotizado',
@@ -673,7 +831,12 @@ function guardarCotizacion(){
     cotizacionItems = [];
     renderItemsCotizacion();
     document.getElementById('cot-referencia').value = '';
+    document.getElementById('cot-fecha').value = hoyISO();
+    document.getElementById('cot-tasa').value = '';
+    document.getElementById('cot-total-bs').value = '';
+    document.getElementById('cot-abonar').value = '';
     document.getElementById('cot-mensaje-wrap').classList.add('hidden');
+    actualizarMontosCotizacion();
     alert('Cotización guardada.');
   });
 }
@@ -695,7 +858,7 @@ function renderCotizacionesPendientes(){
   const el = document.getElementById('cotizaciones-pendientes-list');
   if(cotizacionesCache.length === 0){ el.innerHTML = '<div class="empty-state">No hay cotizaciones pendientes.</div>'; return; }
   el.innerHTML = cotizacionesCache.map(function(c){
-    const resumenProd = c.items.map(function(it){ return it.cantidad+'x '+it.nombre; }).join(', ');
+    const resumenProd = c.items.map(function(it){ return it.cantidad+'x '+nombreProducto(it); }).join(', ');
     return '<div class="card" style="margin:8px 0">'+
       '<div style="font-size:.85rem">'+escapeHtml(c.referencia || '(sin referencia)')+'</div>'+
       '<div class="meta" style="color:var(--muted);font-size:.78rem;margin-top:4px">'+escapeHtml(resumenProd)+'</div>'+
@@ -735,7 +898,7 @@ function renderVentasLista(){
   if(todasLasVentas.length === 0){ el.innerHTML = '<div class="empty-state">Todavía no hay ventas registradas.</div>'; return; }
   el.innerHTML = todasLasVentas.map(function(v){
     const saldo = calcularSaldo(v);
-    const resumenProd = (v.items||[]).map(function(it){ return it.cantidad+'x '+it.nombre; }).join(', ');
+    const resumenProd = (v.items||[]).map(function(it){ return it.cantidad+'x '+nombreProducto(it); }).join(', ');
     return '<div class="card venta-card" onclick="abrirFormVenta(\''+v.id+'\')">'+
       '<div class="top-line"><span class="cliente-nombre">'+escapeHtml(v.nombre||'(sin nombre)')+'</span>'+
       '<span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></div>'+
@@ -801,22 +964,24 @@ function abrirFormVenta(id, cotizacionPrellenada){
     if(cotizacionPrellenada){
       ventaItems = JSON.parse(JSON.stringify(cotizacionPrellenada.items));
       document.getElementById('v-celular').value = cotizacionPrellenada.referencia || '';
+      if(cotizacionPrellenada.totalBs !== undefined && cotizacionPrellenada.totalBs !== null){
+        document.getElementById('v-total-bs').value = cotizacionPrellenada.totalBs;
+      }
+      if(cotizacionPrellenada.abonar > 0){
+        ventaAbonos.push({
+          fecha: cotizacionPrellenada.fecha || fv,
+          tasaBcv: cotizacionPrellenada.tasaBcv || 0,
+          monto: cotizacionPrellenada.abonar,
+          montoBs: cotizacionPrellenada.abonarBs || 0
+        });
+      }
     }
   }
   // limpiar el formulario de "agregar pieza" y la selección de tipografía
-  document.getElementById('v-item-cadena').value = '';
-  document.getElementById('v-item-nombre').value = '';
-  document.getElementById('v-item-nombre-adic').value = '';
-  document.getElementById('v-item-dijes').value = '';
-  document.getElementById('v-item-cantidad').value = 1;
-  document.getElementById('v-item-precio').value = '';
-  document.getElementById('v-item-notas').value = '';
+  limpiarCamposPiezaVenta();
   document.getElementById('ab-tasa').value = '';
   document.getElementById('ab-monto').value = '';
   document.getElementById('ab-monto-bs').value = '0.00';
-  vItemFuenteSeleccionada = '';
-  limpiarSeleccionFuente('v-item-font-grid');
-  actualizarMuestraFuentes('v-item');
   onStatusChange();
   renderItemsVenta();
   renderAbonosVenta();
@@ -838,31 +1003,47 @@ function onStatusChange(){
   document.getElementById('v-fecha-envio-wrap').classList.toggle('hidden', st !== 'Enviado');
 }
 
-function agregarItemVenta(){
-  const nombre = document.getElementById('v-item-nombre').value.trim();
-  if(!nombre){ alert('El nombre a grabar es obligatorio.'); return; }
-  const cantidad = parseInt(document.getElementById('v-item-cantidad').value) || 1;
-  const precio = parseFloat(document.getElementById('v-item-precio').value) || 0;
-  ventaItems.push({
-    cadena: document.getElementById('v-item-cadena').value.trim(),
-    nombre: nombre,
-    nombreAdicional: document.getElementById('v-item-nombre-adic').value.trim(),
-    dijes: document.getElementById('v-item-dijes').value.trim(),
-    notas: document.getElementById('v-item-notas').value.trim(),
-    cantidad: cantidad,
-    precio: precio,
-    tipografia: vItemFuenteSeleccionada || ''
+function limpiarCamposPiezaVenta(){
+  ['v-item-cadena','v-item-nombre','v-item-nombre-adic','v-item-dijes','v-item-tipo-medalla','v-item-cara-frontal','v-item-cara-posterior','v-item-notas'].forEach(function(id){
+    document.getElementById(id).value = '';
   });
-  document.getElementById('v-item-cadena').value = '';
-  document.getElementById('v-item-nombre').value = '';
-  document.getElementById('v-item-nombre-adic').value = '';
-  document.getElementById('v-item-dijes').value = '';
   document.getElementById('v-item-cantidad').value = 1;
   document.getElementById('v-item-precio').value = '';
-  document.getElementById('v-item-notas').value = '';
-  vItemFuenteSeleccionada = '';
-  limpiarSeleccionFuente('v-item-font-grid');
-  actualizarMuestraFuentes('v-item');
+  ['vNombre','vAdic','vFrontal','vPosterior'].forEach(function(k){ fuentesSel[k] = ''; });
+  ['v-item-font-grid-nombre','v-item-font-grid-adic','v-item-font-grid-frontal','v-item-font-grid-posterior'].forEach(limpiarSeleccionFuente);
+  actualizarMuestraGrid('v-item-nombre','v-item-font-grid-nombre');
+  actualizarMuestraGrid('v-item-nombre-adic','v-item-font-grid-adic');
+  actualizarMuestraGrid('v-item-cara-frontal','v-item-font-grid-frontal');
+  actualizarMuestraGrid('v-item-cara-posterior','v-item-font-grid-posterior');
+}
+function agregarItemVenta(){
+  const tipo = tipoPiezaActual['v-item'];
+  const item = {
+    tipo: tipo,
+    cadena: document.getElementById('v-item-cadena').value.trim(),
+    nombre:'', nombreAdicional:'', dijes:'', tipografiaNombre:'', tipografiaAdicional:'',
+    tipoMedalla:'', caraFrontal:'', caraPosterior:'', tipografiaFrontal:'', tipografiaPosterior:'',
+    notas: document.getElementById('v-item-notas').value.trim(),
+    cantidad: parseInt(document.getElementById('v-item-cantidad').value) || 1,
+    precio: parseFloat(document.getElementById('v-item-precio').value) || 0
+  };
+  if(tipo === 'personalizado'){
+    item.nombre = document.getElementById('v-item-nombre').value.trim();
+    if(!item.nombre){ alert('El nombre a grabar es obligatorio.'); return; }
+    item.nombreAdicional = document.getElementById('v-item-nombre-adic').value.trim();
+    item.dijes = document.getElementById('v-item-dijes').value.trim();
+    item.tipografiaNombre = fuentesSel.vNombre || '';
+    item.tipografiaAdicional = fuentesSel.vAdic || '';
+  } else {
+    item.tipoMedalla = document.getElementById('v-item-tipo-medalla').value.trim();
+    item.caraFrontal = document.getElementById('v-item-cara-frontal').value.trim();
+    if(!item.caraFrontal){ alert('La Cara Frontal es obligatoria.'); return; }
+    item.caraPosterior = document.getElementById('v-item-cara-posterior').value.trim();
+    item.tipografiaFrontal = fuentesSel.vFrontal || '';
+    item.tipografiaPosterior = fuentesSel.vPosterior || '';
+  }
+  ventaItems.push(item);
+  limpiarCamposPiezaVenta();
   renderItemsVenta();
 }
 function quitarItemVenta(idx){ ventaItems.splice(idx,1); renderItemsVenta(); }
@@ -871,7 +1052,7 @@ function renderItemsVenta(){
   el.innerHTML = ventaItems.map(function(it, idx){
     const subtotal = it.precio*it.cantidad;
     const detalle = detalleItem(it);
-    return '<div class="item-row"><span>'+it.cantidad+'x '+escapeHtml(it.nombre)+(detalle?' — '+escapeHtml(detalle):'')+' — $'+subtotal.toFixed(2)+'</span>'+
+    return '<div class="item-row"><span>'+it.cantidad+'x '+escapeHtml(nombreProducto(it))+(detalle?' — '+escapeHtml(detalle):'')+' — $'+subtotal.toFixed(2)+'</span>'+
       '<span class="x" onclick="quitarItemVenta('+idx+')">✕</span></div>';
   }).join('');
   const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
@@ -1004,12 +1185,21 @@ function verResumenVenta(){
   txt += 'Fecha de venta: '+fmtFecha(fechaVenta)+'\n\n';
   txt += 'Pieza(s):\n';
   ventaItems.forEach(function(it, idx){
-    txt += '  Pieza '+(idx+1)+':\n';
-    txt += '    Nombre: '+it.nombre+'\n';
-    if(it.nombreAdicional) txt += '    Nombre adicional: '+it.nombreAdicional+'\n';
+    txt += '  Pieza '+(idx+1)+' ('+(it.tipo==='grabado'?'Grabado':'Personalizado')+'):\n';
+    if(it.tipo === 'grabado'){
+      if(it.tipoMedalla) txt += '    Tipo de medalla: '+it.tipoMedalla+'\n';
+      txt += '    Cara Frontal: '+it.caraFrontal+'\n';
+      if(it.tipografiaFrontal) txt += '    Tipografía: '+it.tipografiaFrontal+'\n';
+      if(it.caraPosterior) txt += '    Cara Posterior: '+it.caraPosterior+'\n';
+      if(it.tipografiaPosterior) txt += '    Tipografía: '+it.tipografiaPosterior+'\n';
+    } else {
+      txt += '    Nombre: '+it.nombre+'\n';
+      if(it.tipografiaNombre) txt += '    Tipografía: '+it.tipografiaNombre+'\n';
+      if(it.nombreAdicional) txt += '    Nombre adicional: '+it.nombreAdicional+'\n';
+      if(it.tipografiaAdicional) txt += '    Tipografía: '+it.tipografiaAdicional+'\n';
+      if(it.dijes) txt += '    Dijes: '+it.dijes+'\n';
+    }
     if(it.cadena) txt += '    Cadena: '+it.cadena+'\n';
-    if(it.dijes) txt += '    Dijes: '+it.dijes+'\n';
-    if(it.tipografia) txt += '    Tipografía: '+it.tipografia+'\n';
     if(it.notas) txt += '    Notas: '+it.notas+'\n';
     txt += '    Cantidad: '+it.cantidad+' — Precio $'+it.precio.toFixed(2)+' c/u — Subtotal $'+(it.precio*it.cantidad).toFixed(2)+'\n';
   });
@@ -1059,7 +1249,7 @@ function aplicarFiltrosReporte(){
   document.getElementById('rep-empty').classList.toggle('hidden', filtradas.length > 0);
   tbody.innerHTML = filtradas.map(function(v){
     const saldo = calcularSaldo(v);
-    const resumenProd = (v.items||[]).map(function(it){ return it.cantidad+'x '+it.nombre; }).join(', ');
+    const resumenProd = (v.items||[]).map(function(it){ return it.cantidad+'x '+nombreProducto(it); }).join(', ');
     return '<tr><td><span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></td>'+
       '<td>'+escapeHtml(v.nombre||'-')+'</td>'+
       '<td>'+escapeHtml(resumenProd)+'</td>'+
@@ -1080,7 +1270,7 @@ function exportarCSVReporte(){
   let csv = 'Status,Cliente,Producto,Fecha Venta,Total,Saldo\n';
   filas.forEach(function(v){
     const saldo = calcularSaldo(v);
-    const resumenProd = (v.items||[]).map(function(it){ return it.cantidad+'x '+it.nombre; }).join(' / ');
+    const resumenProd = (v.items||[]).map(function(it){ return it.cantidad+'x '+nombreProducto(it); }).join(' / ');
     const fila = [statusTexto(v.status), v.nombre||'', resumenProd, fmtFecha(v.fechaVenta), Number(v.total||0).toFixed(2), saldo.toFixed(2)];
     csv += fila.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(',') + '\n';
   });
@@ -1111,10 +1301,22 @@ function copiarTexto(textareaEl){
 }
 
 /* -------------------- 14) ARRANQUE -------------------- */
-construirGridFuentes('cot-font-grid');
-construirGridFuentes('v-item-font-grid');
-initFontGridClicks('cot-font-grid', 'cot');
-initFontGridClicks('v-item-font-grid', 'v-item');
+[
+  ['cot-font-grid-nombre','cotNombre'],
+  ['cot-font-grid-adic','cotAdic'],
+  ['cot-font-grid-frontal','cotFrontal'],
+  ['cot-font-grid-posterior','cotPosterior'],
+  ['v-item-font-grid-nombre','vNombre'],
+  ['v-item-font-grid-adic','vAdic'],
+  ['v-item-font-grid-frontal','vFrontal'],
+  ['v-item-font-grid-posterior','vPosterior']
+].forEach(function(pair){
+  construirGridFuentes(pair[0]);
+  initFontGridClicks(pair[0], pair[1]);
+});
+elegirTipoPieza('cot', 'personalizado');
+elegirTipoPieza('v-item', 'personalizado');
+document.getElementById('cot-fecha').value = hoyISO();
 initFirebase();
 </script>
 </body>
