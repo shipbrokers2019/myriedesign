@@ -505,19 +505,19 @@
     <div class="total-line" style="color:var(--danger)"><span>Saldo</span><span id="v-saldo">$0.00</span></div>
 
     <div class="section-title">Fotos</div>
-    <small class="hint">Subí la foto a Google Drive o Google Fotos, activá "Cualquier persona con el enlace" y pegá el link acá.</small>
+    <small class="hint">Tocá "Elegí una foto" y elegí sacar una foto o buscarla en la galería del celular. Se guarda comprimida (ocupa poco espacio) y la ve el otro celular también, sin gastar nada.</small>
 
     <label>Foto(s) de producto terminado</label>
     <div class="row">
-      <input type="text" id="v-foto-producto-link" placeholder="Pegá el link acá...">
-      <button class="btn secondary small" style="flex:0 0 auto" onclick="agregarFotoLink('productoFinal')">+ Agregar</button>
+      <input type="file" accept="image/*" id="v-foto-producto-file" style="flex:1;min-width:0">
+      <button class="btn secondary small" style="flex:0 0 auto" onclick="agregarFotoArchivo('productoFinal')">+ Agregar</button>
     </div>
     <div id="v-fotos-producto"></div>
 
     <label>Foto(s) de guía de envío</label>
     <div class="row">
-      <input type="text" id="v-foto-guia-link" placeholder="Pegá el link acá...">
-      <button class="btn secondary small" style="flex:0 0 auto" onclick="agregarFotoLink('guiaEnvio')">+ Agregar</button>
+      <input type="file" accept="image/*" id="v-foto-guia-file" style="flex:1;min-width:0">
+      <button class="btn secondary small" style="flex:0 0 auto" onclick="agregarFotoArchivo('guiaEnvio')">+ Agregar</button>
     </div>
     <div id="v-fotos-guia"></div>
 
@@ -1093,6 +1093,8 @@ function abrirFormVenta(id, cotizacionPrellenada){
   document.getElementById('ab-tasa').value = tasaBcvDia || '';
   document.getElementById('ab-monto').value = '';
   document.getElementById('ab-monto-bs').value = '0.00';
+  document.getElementById('v-foto-producto-file').value = '';
+  document.getElementById('v-foto-guia-file').value = '';
   onStatusChange();
   renderItemsVenta();
   renderAbonosVenta();
@@ -1202,28 +1204,67 @@ function recalcularSaldoModal(){
   document.getElementById('v-saldo').textContent = '$'+(total-abonado).toFixed(2);
 }
 
-/* -------------------- 9) FOTOS (links de Google Drive/Fotos) -------------------- */
-function agregarFotoLink(categoria){
-  const inputId = categoria === 'productoFinal' ? 'v-foto-producto-link' : 'v-foto-guia-link';
-  const inputEl = document.getElementById(inputId);
-  const url = inputEl.value.trim();
-  if(!url){ alert('Pegá un link antes de agregar.'); return; }
-  ventaFotos[categoria].push(url);
-  inputEl.value = '';
-  renderFotosVenta();
+/* -------------------- 9) FOTOS (se suben desde el celular, se comprimen en el navegador
+   y se guardan directo en Firestore como imagen chica — nada de Firebase Storage, nada
+   de tarjeta, y las ve el otro celular también. Se sigue aceptando el formato viejo
+   (un link de texto) por si había ventas guardadas con ese método antes. -------------------- */
+function comprimirImagen(file, maxDim, calidad){
+  return new Promise(function(resolve, reject){
+    const reader = new FileReader();
+    reader.onerror = function(){ reject(new Error('no se pudo leer el archivo')); };
+    reader.onload = function(){
+      const img = new Image();
+      img.onerror = function(){ reject(new Error('no se pudo leer la imagen')); };
+      img.onload = function(){
+        let w = img.width, h = img.height;
+        if(w >= h && w > maxDim){ h = Math.round(h*maxDim/w); w = maxDim; }
+        else if(h > maxDim){ w = Math.round(w*maxDim/h); h = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', calidad));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
-function quitarFotoLink(categoria, idx){
+function agregarFotoArchivo(categoria){
+  const inputId = categoria === 'productoFinal' ? 'v-foto-producto-file' : 'v-foto-guia-file';
+  const inputEl = document.getElementById(inputId);
+  const file = inputEl.files && inputEl.files[0];
+  if(!file){ alert('Elegí una foto antes de agregar.'); return; }
+  comprimirImagen(file, 900, 0.6).then(function(dataUrl){
+    // Si la foto tiene mucho detalle y quedó pesada igual, comprimimos un poco más.
+    if(dataUrl.length > 700000) return comprimirImagen(file, 650, 0.45);
+    return dataUrl;
+  }).then(function(dataUrl){
+    ventaFotos[categoria].push({ data: dataUrl });
+    inputEl.value = '';
+    renderFotosVenta();
+  }).catch(function(err){
+    alert('No se pudo procesar esa foto ('+err.message+'). Probá con otra.');
+  });
+}
+function quitarFotoArchivo(categoria, idx){
   ventaFotos[categoria].splice(idx,1);
   renderFotosVenta();
 }
+function renderFotoItem(f, categoria, idx){
+  const esLinkViejo = (typeof f === 'string');
+  const src = esLinkViejo ? f : f.data;
+  const contenido = esLinkViejo
+    ? '<a href="'+escapeHtml(src)+'" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80%">📷 '+escapeHtml(src)+'</a>'
+    : '<a href="'+src+'" target="_blank" rel="noopener"><img src="'+src+'" style="max-width:64px;max-height:64px;border-radius:6px;vertical-align:middle;object-fit:cover"></a>';
+  return '<div class="item-row">'+contenido+
+    '<span class="x" onclick="quitarFotoArchivo(\''+categoria+'\','+idx+')">✕</span></div>';
+}
 function renderFotosVenta(){
-  document.getElementById('v-fotos-producto').innerHTML = ventaFotos.productoFinal.map(function(url, idx){
-    return '<div class="item-row"><a href="'+escapeHtml(url)+'" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80%">📷 '+escapeHtml(url)+'</a>'+
-      '<span class="x" onclick="quitarFotoLink(\'productoFinal\','+idx+')">✕</span></div>';
+  document.getElementById('v-fotos-producto').innerHTML = ventaFotos.productoFinal.map(function(f, idx){
+    return renderFotoItem(f, 'productoFinal', idx);
   }).join('');
-  document.getElementById('v-fotos-guia').innerHTML = ventaFotos.guiaEnvio.map(function(url, idx){
-    return '<div class="item-row"><a href="'+escapeHtml(url)+'" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80%">📷 '+escapeHtml(url)+'</a>'+
-      '<span class="x" onclick="quitarFotoLink(\'guiaEnvio\','+idx+')">✕</span></div>';
+  document.getElementById('v-fotos-guia').innerHTML = ventaFotos.guiaEnvio.map(function(f, idx){
+    return renderFotoItem(f, 'guiaEnvio', idx);
   }).join('');
 }
 
@@ -1252,6 +1293,13 @@ function guardarVenta(){
     actualizadoPor: currentUser.email,
     actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
   };
+
+  // Firestore no deja guardar un documento de más de ~1MB. Si se agregaron muchas
+  // fotos, avisamos antes de intentar guardar (en vez de un error raro de Firestore).
+  if(JSON.stringify(data.fotos).length > 900000){
+    alert('Hay demasiadas fotos (o muy pesadas) para esta venta. Quitá alguna antes de guardar — con 2 o 3 por sección alcanza.');
+    return;
+  }
 
   let promesa;
   if(ventaActualId){
