@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Myriedesign - Control de Ventas</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#121212">
+<link rel="icon" href="icon-192.png">
+
+<!-- Firebase (gratis, plan Spark) -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<style>
+  :root{
+    --gold:#D4AF37;
+    --gold-dark:#a5842a;
+    --bg:#121212;
+    --bg2:#1c1c1c;
+    --bg3:#262626;
+    --text:#f5f5f0;
+    --muted:#a8a29a;
+    --danger:#e05252;
+    --success:#4caf7d;
+    --warn:#e0a94c;
+    --info:#5b8def;
+    --border:#333;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding-bottom:70px;
+    min-height:100vh;
+  }
+  h1,h2,h3{margin:0 0 8px 0;}
+  h2{color:var(--gold);font-size:1.1rem;}
+  h3{color:var(--text);font-size:1rem;}
+  .hidden{display:none !important;}
+  .topbar{
+    background:linear-gradient(135deg,#1a1a1a,#2a2a2a);
+    padding:14px 16px;
+    display:flex;justify-content:space-between;align-items:center;
+    border-bottom:1px solid var(--gold-dark);
+    position:sticky;top:0;z-index:20;
+  }
+  .topbar .brand{font-weight:700;color:var(--gold);font-size:1.15rem;letter-spacing:.5px;}
+  .topbar .user{font-size:.75rem;color:var(--muted);}
+  .btn{
+    display:inline-block;
+    background:var(--gold);
+    color:#1a1a1a;
+    border:none;
+    padding:10px 16px;
+    border-radius:8px;
+    font-weight:600;
+    font-size:.9rem;
+    cursor:pointer;
+    text-align:center;
+  }
+  .btn:active{opacity:.8;}
+  .btn.secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border);}
+  .btn.danger{background:var(--danger);color:#fff;}
+  .btn.small{padding:6px 10px;font-size:.78rem;border-radius:6px;}
+  .btn.full{width:100%;}
+  .card{
+    background:var(--bg2);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:14px;
+    margin:12px;
+  }
+  input,select,textarea{
+    width:100%;
+    background:var(--bg3);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px;
+    border-radius:8px;
+    font-size:.95rem;
+    margin-top:4px;
+  }
+  label{font-size:.78rem;color:var(--muted);display:block;margin-top:10px;}
+  .row{display:flex;gap:8px;}
+  .row > *{flex:1;}
+  .field-group{margin-bottom:4px;}
+  .login-wrap{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:24px;
+  }
+  .login-wrap .brand{color:var(--gold);font-size:1.6rem;font-weight:700;margin-bottom:4px;}
+  .login-wrap .sub{color:var(--muted);font-size:.85rem;margin-bottom:24px;}
+  .login-box{width:100%;max-width:340px;}
+  .error-msg{color:var(--danger);font-size:.82rem;margin-top:8px;min-height:16px;}
+  nav.tabs{
+    position:fixed;bottom:0;left:0;right:0;
+    display:flex;
+    background:#1a1a1a;
+    border-top:1px solid var(--gold-dark);
+    z-index:30;
+  }
+  nav.tabs button{
+    flex:1;background:none;border:none;color:var(--muted);
+    padding:10px 2px;font-size:.68rem;cursor:pointer;
+  }
+  nav.tabs button.active{color:var(--gold);font-weight:700;}
+  nav.tabs button .ic{display:block;font-size:1.2rem;margin-bottom:2px;}
+  .tab-content{padding-bottom:20px;}
+  .item-row{
+    display:flex;justify-content:space-between;align-items:center;
+    background:var(--bg3);border-radius:8px;padding:8px 10px;margin-top:8px;font-size:.85rem;
+  }
+  .item-row .x{color:var(--danger);cursor:pointer;font-weight:700;padding:0 6px;}
+  .total-line{
+    display:flex;justify-content:space-between;font-size:1.05rem;font-weight:700;color:var(--gold);
+    margin-top:12px;border-top:1px dashed var(--border);padding-top:10px;
+  }
+  .msg-box{
+    white-space:pre-wrap;font-family:inherit;min-height:160px;background:var(--bg3);
+  }
+  .badge{
+    display:inline-block;padding:3px 9px;border-radius:20px;font-size:.7rem;font-weight:700;
+  }
+  .badge.Aprobado{background:#5b8def33;color:#8fb4ff;}
+  .badge.Fabricacion{background:#e0a94c33;color:#e0a94c;}
+  .badge.Listo{background:#9b6ce033;color:#c39bff;}
+  .badge.Enviado{background:#4caf7d33;color:#4caf7d;}
+  .venta-card{cursor:pointer;}
+  .venta-card .top-line{display:flex;justify-content:space-between;align-items:center;}
+  .venta-card .cliente-nombre{font-weight:700;}
+  .venta-card .meta{color:var(--muted);font-size:.78rem;margin-top:4px;}
+  .venta-card .money-line{display:flex;justify-content:space-between;margin-top:8px;font-size:.88rem;}
+  .saldo-pos{color:var(--danger);font-weight:700;}
+  .saldo-zero{color:var(--success);font-weight:700;}
+  table{width:100%;border-collapse:collapse;font-size:.78rem;}
+  th,td{text-align:left;padding:6px 4px;border-bottom:1px solid var(--border);}
+  th{color:var(--gold);font-size:.7rem;text-transform:uppercase;}
+  .thumb-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+  .thumb-grid img{width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid var(--border);}
+  .filter-block{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .filter-block .full-span{grid-column:1 / -1;}
+  .section-title{color:var(--gold);font-size:.9rem;font-weight:700;margin-top:16px;border-top:1px solid var(--border);padding-top:12px;}
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;
+    display:flex;align-items:flex-end;justify-content:center;
+  }
+  .modal-box{
+    background:var(--bg2);width:100%;max-width:480px;max-height:92vh;overflow-y:auto;
+    border-radius:16px 16px 0 0;padding:16px;
+  }
+  .modal-box .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .close-x{background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;line-height:1;}
+  .empty-state{color:var(--muted);text-align:center;padding:24px 12px;font-size:.85rem;}
+  .abono-row{display:flex;gap:8px;align-items:center;background:var(--bg3);padding:8px;border-radius:8px;margin-top:6px;}
+  .abono-row span{flex:1;font-size:.82rem;}
+  .config-warning{
+    background:#e0525233;border:1px solid var(--danger);color:#ffb3b3;padding:10px;border-radius:8px;font-size:.78rem;margin:12px;
+  }
+  .prod-row{display:flex;gap:8px;align-items:flex-end;}
+  .prod-row select{flex:2;}
+  .prod-row input{flex:1;}
+  small.hint{color:var(--muted);font-size:.72rem;display:block;margin-top:4px;}
+</style>
+</head>
+<body>
+
+<!-- ====================== PANTALLA: CONFIG FALTANTE ====================== -->
+<div id="config-warning" class="config-warning hidden">
+  ⚠️ Falta configurar Firebase. Abrí este archivo con un editor de texto, buscá <code>firebaseConfig</code> cerca del final del archivo, y pegá los datos de tu proyecto Firebase ahí. Revisá SETUP.md para el paso a paso.
+</div>
+
+<!-- ====================== PANTALLA: LOGIN ====================== -->
+<div id="login-screen" class="login-wrap hidden">
+  <div class="brand">✦ Myriedesign</div>
+  <div class="sub">Control de cotizaciones y ventas</div>
+  <div class="login-box card">
+    <label>Correo</label>
+    <input type="email" id="login-email" autocomplete="username" placeholder="tucorreo@gmail.com">
+    <label>Contraseña</label>
+    <input type="password" id="login-pass" autocomplete="current-password" placeholder="••••••••">
+    <button class="btn full" style="margin-top:16px" onclick="doLogin()">Iniciar sesión</button>
+    <div class="error-msg" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ====================== APP PRINCIPAL ====================== -->
+<div id="app-screen" class="hidden">
+  <div class="topbar">
+    <div>
+      <div class="brand">✦ Myriedesign</div>
+      <div class="user" id="user-email-label"></div>
+    </div>
+    <button class="btn secondary small" onclick="doLogout()">Salir</button>
+  </div>
+
+  <!-- ---------- TAB: COTIZAR ---------- -->
+  <div id="tab-cotizar" class="tab-content">
+    <div class="card">
+      <h2>Nueva cotización</h2>
+      <small class="hint">Todavía no hace falta el nombre del cliente. Cuando confirme la compra, la convertís en venta y ahí pedís sus datos.</small>
+
+      <label>Referencia (Instagram, apodo, nº de WhatsApp...)</label>
+      <input type="text" id="cot-referencia" placeholder="Ej: IG @juanita / +58 412...">
+
+      <div class="section-title">Agregar producto</div>
+      <div class="prod-row">
+        <div style="flex:2">
+          <label>Producto</label>
+          <select id="cot-select-producto"></select>
+        </div>
+        <div style="flex:1">
+          <label>Cant.</label>
+          <input type="number" id="cot-cantidad" value="1" min="1">
+        </div>
+      </div>
+      <button class="btn secondary full" style="margin-top:8px" onclick="agregarItemCotizacion()">+ Agregar a la cotización</button>
+
+      <div id="cot-items-list"></div>
+      <div class="total-line"><span>Total</span><span id="cot-total">$0.00</span></div>
+
+      <button class="btn full" style="margin-top:14px" onclick="generarMensajeCotizacion()">Generar mensaje para el cliente</button>
+
+      <div id="cot-mensaje-wrap" class="hidden" style="margin-top:12px">
+        <label>Mensaje (tocá para copiar)</label>
+        <textarea id="cot-mensaje" class="msg-box" readonly></textarea>
+        <button class="btn secondary full" style="margin-top:6px" onclick="copiarMensajeCotizacion()">📋 Copiar mensaje</button>
+      </div>
+
+      <button class="btn full" style="margin-top:10px;background:var(--success);color:#fff" onclick="guardarCotizacion()">✓ Guardar cotización</button>
+    </div>
+
+    <div class="card">
+      <h2>Cotizaciones pendientes</h2>
+      <small class="hint">Cuando el cliente confirme la compra, tocá "Convertir en venta".</small>
+      <div id="cotizaciones-pendientes-list"><div class="empty-state">Cargando...</div></div>
+    </div>
+  </div>
+
+  <!-- ---------- TAB: VENTAS ---------- -->
+  <div id="tab-ventas" class="tab-content hidden">
+    <div class="card">
+      <button class="btn full" onclick="abrirFormVenta(null)">+ Nueva venta manual</button>
+    </div>
+    <div class="card">
+      <h2>Ventas registradas</h2>
+      <div id="ventas-list"><div class="empty-state">Cargando...</div></div>
+    </div>
+  </div>
+
+  <!-- ---------- TAB: REPORTES ---------- -->
+  <div id="tab-reportes" class="tab-content hidden">
+    <div class="card">
+      <h2>Filtros</h2>
+      <div class="filter-block">
+        <div>
+          <label>Status</label>
+          <select id="rep-status">
+            <option value="">Todos</option>
+            <option value="Aprobado">Aprobado</option>
+            <option value="Fabricacion">Fabricación</option>
+            <option value="Listo">Listo para envío</option>
+            <option value="Enviado">Enviado</option>
+          </select>
+        </div>
+        <div>
+          <label>Cliente</label>
+          <input type="text" id="rep-cliente" placeholder="Nombre...">
+        </div>
+        <div>
+          <label>Venta desde</label>
+          <input type="date" id="rep-venta-desde">
+        </div>
+        <div>
+          <label>Venta hasta</label>
+          <input type="date" id="rep-venta-hasta">
+        </div>
+        <div>
+          <label>Entrega aprox. desde</label>
+          <input type="date" id="rep-entrega-desde">
+        </div>
+        <div>
+          <label>Entrega aprox. hasta</label>
+          <input type="date" id="rep-entrega-hasta">
+        </div>
+        <div>
+          <label>Envío desde</label>
+          <input type="date" id="rep-envio-desde">
+        </div>
+        <div>
+          <label>Envío hasta</label>
+          <input type="date" id="rep-envio-hasta">
+        </div>
+      </div>
+      <button class="btn full" style="margin-top:12px" onclick="aplicarFiltrosReporte()">Aplicar filtros</button>
+      <button class="btn secondary full" style="margin-top:8px" onclick="limpiarFiltrosReporte()">Limpiar filtros</button>
+    </div>
+    <div class="card">
+      <div class="top-line" style="display:flex;justify-content:space-between;align-items:center">
+        <h2 style="margin:0">Resultado</h2>
+        <button class="btn secondary small" onclick="exportarCSVReporte()">⬇ CSV</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="rep-table">
+          <thead><tr><th>Status</th><th>Cliente</th><th>Producto</th><th>F. Venta</th><th>Total</th><th>Saldo</th></tr></thead>
+          <tbody id="rep-tbody"></tbody>
+        </table>
+      </div>
+      <div id="rep-empty" class="empty-state hidden">Sin resultados con estos filtros.</div>
+    </div>
+  </div>
+
+  <!-- ---------- TAB: CATALOGO ---------- -->
+  <div id="tab-catalogo" class="tab-content hidden">
+    <div class="card">
+      <h2>Agregar producto</h2>
+      <label>Nombre</label>
+      <input type="text" id="cat-nombre" placeholder="Ej: Pulsera baño de oro">
+      <label>Precio $</label>
+      <input type="number" id="cat-precio" step="0.01" placeholder="0.00">
+      <button class="btn full" style="margin-top:10px" onclick="agregarProductoCatalogo()">+ Agregar al catálogo</button>
+    </div>
+    <div class="card">
+      <h2>Catálogo actual</h2>
+      <div id="catalogo-list"><div class="empty-state">Cargando...</div></div>
+    </div>
+  </div>
+
+  <nav class="tabs">
+    <button id="navbtn-cotizar" class="active" onclick="mostrarTab('cotizar')"><span class="ic">🧾</span>Cotizar</button>
+    <button id="navbtn-ventas" onclick="mostrarTab('ventas')"><span class="ic">💰</span>Ventas</button>
+    <button id="navbtn-reportes" onclick="mostrarTab('reportes')"><span class="ic">📊</span>Reportes</button>
+    <button id="navbtn-catalogo" onclick="mostrarTab('catalogo')"><span class="ic">🏷️</span>Catálogo</button>
+  </nav>
+</div>
+
+<!-- ====================== MODAL: FORMULARIO DE VENTA ====================== -->
+<div id="modal-venta" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="modal-venta-titulo">Nueva venta</h2>
+      <button class="close-x" onclick="cerrarModalVenta()">✕</button>
+    </div>
+
+    <div class="section-title">Datos del cliente</div>
+    <label>Nombre completo</label>
+    <input type="text" id="v-nombre" placeholder="Nombre y apellido">
+    <div class="row">
+      <div><label>Cédula / ID</label><input type="text" id="v-id"></div>
+      <div><label>Celular</label><input type="text" id="v-celular"></div>
+    </div>
+    <label>Empresa de envío</label>
+    <input type="text" id="v-empresa-envio" placeholder="Ej: MRW, Zoom, Tealca...">
+    <label>Dirección de envío</label>
+    <textarea id="v-direccion-envio" rows="2"></textarea>
+
+    <div class="section-title">Productos</div>
+    <div class="prod-row">
+      <div style="flex:2">
+        <label>Producto</label>
+        <select id="v-select-producto"></select>
+      </div>
+      <div style="flex:1">
+        <label>Cant.</label>
+        <input type="number" id="v-cantidad" value="1" min="1">
+      </div>
+    </div>
+    <button class="btn secondary full" style="margin-top:8px" onclick="agregarItemVenta()">+ Agregar producto</button>
+    <div id="v-items-list"></div>
+    <div class="total-line"><span>Total</span><span id="v-total">$0.00</span></div>
+
+    <div class="section-title">Fechas y status</div>
+    <div class="row">
+      <div><label>Fecha de venta</label><input type="date" id="v-fecha-venta" onchange="onFechaVentaChange()"></div>
+      <div><label>Entrega aprox.</label><input type="date" id="v-fecha-entrega"></div>
+    </div>
+    <label>Status</label>
+    <select id="v-status" onchange="onStatusChange()">
+      <option value="Aprobado">Aprobado</option>
+      <option value="Fabricacion">Fabricación</option>
+      <option value="Listo">Listo para envío</option>
+      <option value="Enviado">Enviado</option>
+    </select>
+    <div id="v-fecha-envio-wrap" class="hidden">
+      <label>Fecha de envío</label>
+      <input type="date" id="v-fecha-envio">
+    </div>
+
+    <div class="section-title">Abonos</div>
+    <div class="row">
+      <div><label>Fecha</label><input type="date" id="ab-fecha"></div>
+      <div><label>Monto $</label><input type="number" id="ab-monto" step="0.01"></div>
+    </div>
+    <button class="btn secondary full" style="margin-top:8px" onclick="agregarAbono()">+ Agregar abono</button>
+    <div id="v-abonos-list"></div>
+    <div class="total-line" style="color:var(--success)"><span>Abonado</span><span id="v-abonado">$0.00</span></div>
+    <div class="total-line" style="color:var(--danger)"><span>Saldo</span><span id="v-saldo">$0.00</span></div>
+
+    <div class="section-title">Fotos</div>
+    <small class="hint">Subí la foto a Google Drive o Google Fotos, activá "Cualquier persona con el enlace" y pegá el link acá.</small>
+
+    <label>Foto(s) de producto terminado</label>
+    <div class="row">
+      <input type="text" id="v-foto-producto-link" placeholder="Pegá el link acá...">
+      <button class="btn secondary small" style="flex:0 0 auto" onclick="agregarFotoLink('productoFinal')">+ Agregar</button>
+    </div>
+    <div id="v-fotos-producto"></div>
+
+    <label>Foto(s) de guía de envío</label>
+    <div class="row">
+      <input type="text" id="v-foto-guia-link" placeholder="Pegá el link acá...">
+      <button class="btn secondary small" style="flex:0 0 auto" onclick="agregarFotoLink('guiaEnvio')">+ Agregar</button>
+    </div>
+    <div id="v-fotos-guia"></div>
+
+    <button class="btn full" style="margin-top:16px;background:var(--success);color:#fff" onclick="guardarVenta()">✓ Guardar venta</button>
+    <button class="btn secondary full" style="margin-top:8px" onclick="verResumenVenta()">📋 Ver / copiar resumen</button>
+    <button id="v-btn-eliminar" class="btn danger full hidden" style="margin-top:8px" onclick="eliminarVenta()">Eliminar venta</button>
+  </div>
+</div>
+
+<!-- ====================== MODAL: RESUMEN DE VENTA ====================== -->
+<div id="modal-resumen" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Resumen de venta</h2>
+      <button class="close-x" onclick="document.getElementById('modal-resumen').classList.add('hidden')">✕</button>
+    </div>
+    <textarea id="resumen-texto" class="msg-box" style="min-height:320px" readonly></textarea>
+    <button class="btn full" style="margin-top:8px" onclick="copiarResumen()">📋 Copiar resumen</button>
+  </div>
+</div>
+
+<script>
+/* ======================================================================
+   MYRIEDESIGN - CONTROL DE VENTAS
+   App de una sola página. Usa Firebase (gratis) como base de datos
+   compartida para que ambos celulares vean la misma información.
+   ====================================================================== */
+
+/* -------------------- 1) CONFIGURACIÓN DE FIREBASE --------------------
+   Reemplazá el objeto de abajo con el que te da tu proyecto de Firebase
+   (Configuración del proyecto > Tus apps > Config). Ver SETUP.md.
+------------------------------------------------------------------------ */
+const firebaseConfig = {
+  apiKey: "AIzaSyBBgbmT8oIOTBI8ZSj0JG-sGlwjCZTI3Jo",
+  authDomain: "myriedesign-ee80b.firebaseapp.com",
+  projectId: "myriedesign-ee80b",
+  storageBucket: "myriedesign-ee80b.firebasestorage.app",
+  messagingSenderId: "570181552736",
+  appId: "1:570181552736:web:9daa9f8bad541cdb911105"
+};
+
+let db, auth;
+let firebaseReady = false;
+
+function initFirebase(){
+  if(firebaseConfig.apiKey.indexOf("PEGA_AQUI") !== -1){
+    document.getElementById('config-warning').classList.remove('hidden');
+    return;
+  }
+  firebase.initializeApp(firebaseConfig);
+  auth = firebase.auth();
+  db = firebase.firestore();
+  firebaseReady = true;
+
+  auth.onAuthStateChanged(function(user){
+    if(user){
+      currentUser = user;
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('app-screen').classList.remove('hidden');
+      document.getElementById('user-email-label').textContent = user.email;
+      cargarCatalogo();
+      cargarCotizacionesPendientes();
+      cargarVentas();
+    } else {
+      currentUser = null;
+      document.getElementById('app-screen').classList.add('hidden');
+      document.getElementById('login-screen').classList.remove('hidden');
+    }
+  });
+}
+
+/* -------------------- 2) ESTADO GLOBAL -------------------- */
+let currentUser = null;
+let catalogo = [];              // [{id, nombre, precio}]
+let cotizacionItems = [];       // items de la cotización en construcción
+let todasLasVentas = [];        // cache local de ventas para filtros de reporte
+let ventaActualId = null;       // id de la venta que se está editando (null = nueva)
+let ventaItems = [];            // items de la venta en el modal
+let ventaAbonos = [];           // abonos de la venta en el modal
+let ventaFotos = { productoFinal: [], guiaEnvio: [] };
+let cotizacionOrigenId = null;  // si la venta viene de una cotización, guardamos su id
+
+/* -------------------- 3) LOGIN / LOGOUT -------------------- */
+function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  if(!email || !pass){ errEl.textContent = 'Completá correo y contraseña.'; return; }
+  auth.signInWithEmailAndPassword(email, pass).catch(function(err){
+    errEl.textContent = 'No se pudo iniciar sesión: ' + err.message;
+  });
+}
+function doLogout(){ auth.signOut(); }
+
+/* -------------------- 4) NAVEGACIÓN DE PESTAÑAS -------------------- */
+function mostrarTab(nombre){
+  ['cotizar','ventas','reportes','catalogo'].forEach(function(t){
+    document.getElementById('tab-'+t).classList.toggle('hidden', t !== nombre);
+    document.getElementById('navbtn-'+t).classList.toggle('active', t === nombre);
+  });
+  if(nombre === 'reportes'){ aplicarFiltrosReporte(); }
+}
+
+/* -------------------- 5) CATÁLOGO -------------------- */
+function cargarCatalogo(){
+  db.collection('catalogo').orderBy('nombre').onSnapshot(function(snap){
+    catalogo = [];
+    snap.forEach(function(doc){ catalogo.push(Object.assign({id: doc.id}, doc.data())); });
+    renderCatalogoSelects();
+    renderCatalogoLista();
+  });
+}
+function renderCatalogoSelects(){
+  const opciones = catalogo.map(function(p){
+    return '<option value="'+p.id+'">'+escapeHtml(p.nombre)+' - $'+Number(p.precio).toFixed(2)+'</option>';
+  }).join('');
+  document.getElementById('cot-select-producto').innerHTML = opciones || '<option value="">(agregá productos en Catálogo)</option>';
+  document.getElementById('v-select-producto').innerHTML = opciones || '<option value="">(agregá productos en Catálogo)</option>';
+}
+function renderCatalogoLista(){
+  const el = document.getElementById('catalogo-list');
+  if(catalogo.length === 0){ el.innerHTML = '<div class="empty-state">Todavía no agregaste productos.</div>'; return; }
+  el.innerHTML = catalogo.map(function(p){
+    return '<div class="item-row"><span>'+escapeHtml(p.nombre)+' — $'+Number(p.precio).toFixed(2)+'</span>'+
+      '<span class="x" onclick="eliminarProductoCatalogo(\''+p.id+'\')">✕</span></div>';
+  }).join('');
+}
+function agregarProductoCatalogo(){
+  const nombre = document.getElementById('cat-nombre').value.trim();
+  const precio = parseFloat(document.getElementById('cat-precio').value);
+  if(!nombre || isNaN(precio) || precio < 0){ alert('Completá nombre y precio válidos.'); return; }
+  db.collection('catalogo').add({ nombre: nombre, precio: precio }).then(function(){
+    document.getElementById('cat-nombre').value = '';
+    document.getElementById('cat-precio').value = '';
+  });
+}
+function eliminarProductoCatalogo(id){
+  if(!confirm('¿Eliminar este producto del catálogo?')) return;
+  db.collection('catalogo').doc(id).delete();
+}
+
+/* -------------------- 6) COTIZADOR -------------------- */
+function agregarItemCotizacion(){
+  const sel = document.getElementById('cot-select-producto');
+  const prodId = sel.value;
+  const prod = catalogo.find(function(p){ return p.id === prodId; });
+  if(!prod){ alert('Elegí un producto del catálogo.'); return; }
+  const cantidad = parseInt(document.getElementById('cot-cantidad').value) || 1;
+  cotizacionItems.push({ nombre: prod.nombre, precio: prod.precio, cantidad: cantidad });
+  renderItemsCotizacion();
+}
+function renderItemsCotizacion(){
+  const el = document.getElementById('cot-items-list');
+  el.innerHTML = cotizacionItems.map(function(it, idx){
+    const subtotal = it.precio * it.cantidad;
+    return '<div class="item-row"><span>'+it.cantidad+' x '+escapeHtml(it.nombre)+' — $'+subtotal.toFixed(2)+'</span>'+
+      '<span class="x" onclick="quitarItemCotizacion('+idx+')">✕</span></div>';
+  }).join('');
+  const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
+  document.getElementById('cot-total').textContent = '$'+total.toFixed(2);
+}
+function quitarItemCotizacion(idx){ cotizacionItems.splice(idx,1); renderItemsCotizacion(); }
+
+function generarMensajeCotizacion(){
+  if(cotizacionItems.length === 0){ alert('Agregá al menos un producto.'); return; }
+  let msg = 'Myriedesign te cotiza:\n\n';
+  cotizacionItems.forEach(function(it){
+    msg += '• '+it.cantidad+' x '+it.nombre+' — $'+(it.precio*it.cantidad).toFixed(2)+'\n';
+  });
+  const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
+  msg += '\nTotal: $'+total.toFixed(2);
+  msg += '\n\nTiempo estimado de entrega: 15 días luego de confirmar la compra.\n¿Deseas confirmar tu pedido? 😊';
+  document.getElementById('cot-mensaje').value = msg;
+  document.getElementById('cot-mensaje-wrap').classList.remove('hidden');
+}
+function copiarMensajeCotizacion(){ copiarTexto(document.getElementById('cot-mensaje')); }
+
+function guardarCotizacion(){
+  if(cotizacionItems.length === 0){ alert('Agregá al menos un producto antes de guardar.'); return; }
+  const referencia = document.getElementById('cot-referencia').value.trim();
+  const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
+  db.collection('cotizaciones').add({
+    referencia: referencia,
+    items: cotizacionItems,
+    total: total,
+    status: 'Cotizado',
+    creadoPor: currentUser.email,
+    creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    cotizacionItems = [];
+    renderItemsCotizacion();
+    document.getElementById('cot-referencia').value = '';
+    document.getElementById('cot-mensaje-wrap').classList.add('hidden');
+    alert('Cotización guardada.');
+  });
+}
+
+let cotizacionesCache = [];
+function cargarCotizacionesPendientes(){
+  db.collection('cotizaciones').where('status','==','Cotizado').onSnapshot(function(snap){
+    cotizacionesCache = [];
+    snap.forEach(function(doc){ cotizacionesCache.push(Object.assign({id:doc.id}, doc.data())); });
+    cotizacionesCache.sort(function(a,b){
+      const ta = a.creadoEn && a.creadoEn.seconds ? a.creadoEn.seconds : 0;
+      const tb = b.creadoEn && b.creadoEn.seconds ? b.creadoEn.seconds : 0;
+      return tb - ta;
+    });
+    renderCotizacionesPendientes();
+  });
+}
+function renderCotizacionesPendientes(){
+  const el = document.getElementById('cotizaciones-pendientes-list');
+  if(cotizacionesCache.length === 0){ el.innerHTML = '<div class="empty-state">No hay cotizaciones pendientes.</div>'; return; }
+  el.innerHTML = cotizacionesCache.map(function(c){
+    const resumenProd = c.items.map(function(it){ return it.cantidad+'x '+it.nombre; }).join(', ');
+    return '<div class="card" style="margin:8px 0">'+
+      '<div style="font-size:.85rem">'+escapeHtml(c.referencia || '(sin referencia)')+'</div>'+
+      '<div class="meta" style="color:var(--muted);font-size:.78rem;margin-top:4px">'+escapeHtml(resumenProd)+'</div>'+
+      '<div class="total-line" style="font-size:.9rem;margin-top:6px"><span>Total</span><span>$'+Number(c.total).toFixed(2)+'</span></div>'+
+      '<button class="btn full small" style="margin-top:8px" onclick="convertirEnVenta(\''+c.id+'\')">Convertir en venta →</button>'+
+      '</div>';
+  }).join('');
+}
+function convertirEnVenta(cotizacionId){
+  const c = cotizacionesCache.find(function(x){ return x.id === cotizacionId; });
+  if(!c) return;
+  cotizacionOrigenId = cotizacionId;
+  abrirFormVenta(null, c);
+  mostrarTab('ventas');
+}
+
+/* -------------------- 7) VENTAS: LISTA -------------------- */
+function cargarVentas(){
+  db.collection('ventas').onSnapshot(function(snap){
+    todasLasVentas = [];
+    snap.forEach(function(doc){ todasLasVentas.push(Object.assign({id:doc.id}, doc.data())); });
+    todasLasVentas.sort(function(a,b){ return (b.fechaVenta||'').localeCompare(a.fechaVenta||''); });
+    renderVentasLista();
+  });
+}
+function statusClase(status){ return status === 'Fabricacion' ? 'Fabricacion' : status; }
+function statusTexto(status){
+  const map = { Aprobado:'Aprobado', Fabricacion:'Fabricación', Listo:'Listo para envío', Enviado:'Enviado' };
+  return map[status] || status;
+}
+function calcularSaldo(venta){
+  const abonado = (venta.abonos||[]).reduce(function(s,a){ return s + Number(a.monto); }, 0);
+  return Number(venta.total||0) - abonado;
+}
+function renderVentasLista(){
+  const el = document.getElementById('ventas-list');
+  if(todasLasVentas.length === 0){ el.innerHTML = '<div class="empty-state">Todavía no hay ventas registradas.</div>'; return; }
+  el.innerHTML = todasLasVentas.map(function(v){
+    const saldo = calcularSaldo(v);
+    const resumenProd = (v.items||[]).map(function(it){ return it.cantidad+'x '+it.nombre; }).join(', ');
+    return '<div class="card venta-card" onclick="abrirFormVenta(\''+v.id+'\')">'+
+      '<div class="top-line"><span class="cliente-nombre">'+escapeHtml(v.nombre||'(sin nombre)')+'</span>'+
+      '<span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></div>'+
+      '<div class="meta">'+escapeHtml(resumenProd)+'</div>'+
+      '<div class="meta">Venta: '+fmtFecha(v.fechaVenta)+' · Entrega aprox: '+fmtFecha(v.fechaEntrega)+'</div>'+
+      '<div class="money-line"><span>Total: $'+Number(v.total||0).toFixed(2)+'</span>'+
+      '<span class="'+(saldo>0.004?'saldo-pos':'saldo-zero')+'">Saldo: $'+saldo.toFixed(2)+'</span></div>'+
+      '</div>';
+  }).join('');
+}
+
+/* -------------------- 8) VENTAS: FORMULARIO / MODAL -------------------- */
+function hoyISO(){ return new Date().toISOString().slice(0,10); }
+function sumarDias(fechaISO, dias){
+  const d = new Date(fechaISO+'T00:00:00');
+  d.setDate(d.getDate()+dias);
+  return d.toISOString().slice(0,10);
+}
+function fmtFecha(iso){
+  if(!iso) return '-';
+  const p = iso.split('-');
+  return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0] : iso;
+}
+
+function abrirFormVenta(id, cotizacionPrellenada){
+  ventaActualId = id;
+  ventaItems = [];
+  ventaAbonos = [];
+  ventaFotos = { productoFinal: [], guiaEnvio: [] };
+  document.getElementById('v-btn-eliminar').classList.toggle('hidden', !id);
+
+  if(id){
+    const v = todasLasVentas.find(function(x){ return x.id === id; });
+    if(!v) return;
+    document.getElementById('modal-venta-titulo').textContent = 'Editar venta';
+    document.getElementById('v-nombre').value = v.nombre || '';
+    document.getElementById('v-id').value = v.cedula || '';
+    document.getElementById('v-celular').value = v.celular || '';
+    document.getElementById('v-empresa-envio').value = v.empresaEnvio || '';
+    document.getElementById('v-direccion-envio').value = v.direccionEnvio || '';
+    document.getElementById('v-fecha-venta').value = v.fechaVenta || hoyISO();
+    document.getElementById('v-fecha-entrega').value = v.fechaEntrega || '';
+    document.getElementById('v-status').value = v.status || 'Aprobado';
+    document.getElementById('v-fecha-envio').value = v.fechaEnvio || '';
+    ventaItems = JSON.parse(JSON.stringify(v.items || []));
+    ventaAbonos = JSON.parse(JSON.stringify(v.abonos || []));
+    ventaFotos = JSON.parse(JSON.stringify(v.fotos || { productoFinal: [], guiaEnvio: [] }));
+    cotizacionOrigenId = null;
+  } else {
+    document.getElementById('modal-venta-titulo').textContent = 'Nueva venta';
+    document.getElementById('v-nombre').value = '';
+    document.getElementById('v-id').value = '';
+    document.getElementById('v-celular').value = '';
+    document.getElementById('v-empresa-envio').value = '';
+    document.getElementById('v-direccion-envio').value = '';
+    const fv = hoyISO();
+    document.getElementById('v-fecha-venta').value = fv;
+    document.getElementById('v-fecha-entrega').value = sumarDias(fv, 15);
+    document.getElementById('v-status').value = 'Aprobado';
+    document.getElementById('v-fecha-envio').value = '';
+    if(cotizacionPrellenada){
+      ventaItems = JSON.parse(JSON.stringify(cotizacionPrellenada.items));
+      document.getElementById('v-celular').value = cotizacionPrellenada.referencia || '';
+    }
+  }
+  onStatusChange();
+  renderItemsVenta();
+  renderAbonosVenta();
+  renderFotosVenta();
+  document.getElementById('modal-venta').classList.remove('hidden');
+}
+function cerrarModalVenta(){
+  document.getElementById('modal-venta').classList.add('hidden');
+  cotizacionOrigenId = null;
+}
+function onFechaVentaChange(){
+  // Si el usuario cambia la fecha de venta y la entrega todavía no fue tocada manualmente,
+  // recalculamos como fecha venta + 15 días (comportamiento por defecto).
+  const fv = document.getElementById('v-fecha-venta').value;
+  if(fv) document.getElementById('v-fecha-entrega').value = sumarDias(fv, 15);
+}
+function onStatusChange(){
+  const st = document.getElementById('v-status').value;
+  document.getElementById('v-fecha-envio-wrap').classList.toggle('hidden', st !== 'Enviado');
+}
+
+function agregarItemVenta(){
+  const sel = document.getElementById('v-select-producto');
+  const prod = catalogo.find(function(p){ return p.id === sel.value; });
+  if(!prod){ alert('Elegí un producto del catálogo.'); return; }
+  const cantidad = parseInt(document.getElementById('v-cantidad').value) || 1;
+  ventaItems.push({ nombre: prod.nombre, precio: prod.precio, cantidad: cantidad });
+  renderItemsVenta();
+}
+function quitarItemVenta(idx){ ventaItems.splice(idx,1); renderItemsVenta(); }
+function renderItemsVenta(){
+  const el = document.getElementById('v-items-list');
+  el.innerHTML = ventaItems.map(function(it, idx){
+    const subtotal = it.precio*it.cantidad;
+    return '<div class="item-row"><span>'+it.cantidad+' x '+escapeHtml(it.nombre)+' — $'+subtotal.toFixed(2)+'</span>'+
+      '<span class="x" onclick="quitarItemVenta('+idx+')">✕</span></div>';
+  }).join('');
+  const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
+  document.getElementById('v-total').textContent = '$'+total.toFixed(2);
+  recalcularSaldoModal();
+}
+function agregarAbono(){
+  const fecha = document.getElementById('ab-fecha').value || hoyISO();
+  const monto = parseFloat(document.getElementById('ab-monto').value);
+  if(isNaN(monto) || monto <= 0){ alert('Ingresá un monto válido.'); return; }
+  ventaAbonos.push({ fecha: fecha, monto: monto });
+  document.getElementById('ab-monto').value = '';
+  renderAbonosVenta();
+}
+function quitarAbono(idx){ ventaAbonos.splice(idx,1); renderAbonosVenta(); }
+function renderAbonosVenta(){
+  const el = document.getElementById('v-abonos-list');
+  el.innerHTML = ventaAbonos.map(function(a, idx){
+    return '<div class="abono-row"><span>'+fmtFecha(a.fecha)+' — $'+Number(a.monto).toFixed(2)+'</span>'+
+      '<span class="x" onclick="quitarAbono('+idx+')">✕</span></div>';
+  }).join('');
+  recalcularSaldoModal();
+}
+function recalcularSaldoModal(){
+  const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
+  const abonado = ventaAbonos.reduce(function(s,a){ return s + Number(a.monto); }, 0);
+  document.getElementById('v-abonado').textContent = '$'+abonado.toFixed(2);
+  document.getElementById('v-saldo').textContent = '$'+(total-abonado).toFixed(2);
+}
+
+/* -------------------- 9) FOTOS (links de Google Drive/Fotos) -------------------- */
+function agregarFotoLink(categoria){
+  const inputId = categoria === 'productoFinal' ? 'v-foto-producto-link' : 'v-foto-guia-link';
+  const inputEl = document.getElementById(inputId);
+  const url = inputEl.value.trim();
+  if(!url){ alert('Pegá un link antes de agregar.'); return; }
+  ventaFotos[categoria].push(url);
+  inputEl.value = '';
+  renderFotosVenta();
+}
+function quitarFotoLink(categoria, idx){
+  ventaFotos[categoria].splice(idx,1);
+  renderFotosVenta();
+}
+function renderFotosVenta(){
+  document.getElementById('v-fotos-producto').innerHTML = ventaFotos.productoFinal.map(function(url, idx){
+    return '<div class="item-row"><a href="'+escapeHtml(url)+'" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80%">📷 '+escapeHtml(url)+'</a>'+
+      '<span class="x" onclick="quitarFotoLink(\'productoFinal\','+idx+')">✕</span></div>';
+  }).join('');
+  document.getElementById('v-fotos-guia').innerHTML = ventaFotos.guiaEnvio.map(function(url, idx){
+    return '<div class="item-row"><a href="'+escapeHtml(url)+'" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80%">📷 '+escapeHtml(url)+'</a>'+
+      '<span class="x" onclick="quitarFotoLink(\'guiaEnvio\','+idx+')">✕</span></div>';
+  }).join('');
+}
+
+/* -------------------- 10) GUARDAR / ELIMINAR VENTA -------------------- */
+function guardarVenta(){
+  const nombre = document.getElementById('v-nombre').value.trim();
+  if(!nombre){ alert('El nombre del cliente es obligatorio.'); return; }
+  if(ventaItems.length === 0){ alert('Agregá al menos un producto.'); return; }
+
+  const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
+  const data = {
+    nombre: nombre,
+    cedula: document.getElementById('v-id').value.trim(),
+    celular: document.getElementById('v-celular').value.trim(),
+    empresaEnvio: document.getElementById('v-empresa-envio').value.trim(),
+    direccionEnvio: document.getElementById('v-direccion-envio').value.trim(),
+    items: ventaItems,
+    total: total,
+    fechaVenta: document.getElementById('v-fecha-venta').value,
+    fechaEntrega: document.getElementById('v-fecha-entrega').value,
+    status: document.getElementById('v-status').value,
+    fechaEnvio: document.getElementById('v-fecha-envio').value || null,
+    abonos: ventaAbonos,
+    fotos: ventaFotos,
+    actualizadoPor: currentUser.email,
+    actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  let promesa;
+  if(ventaActualId){
+    promesa = db.collection('ventas').doc(ventaActualId).update(data);
+  } else {
+    data.creadoPor = currentUser.email;
+    data.creadoEn = firebase.firestore.FieldValue.serverTimestamp();
+    promesa = db.collection('ventas').add(data);
+  }
+  promesa.then(function(){
+    if(cotizacionOrigenId){
+      db.collection('cotizaciones').doc(cotizacionOrigenId).update({ status: 'Convertida' });
+      cotizacionOrigenId = null;
+    }
+    cerrarModalVenta();
+  }).catch(function(err){ alert('Error guardando venta: '+err.message); });
+}
+function eliminarVenta(){
+  if(!ventaActualId) return;
+  if(!confirm('¿Eliminar esta venta? Esta acción no se puede deshacer.')) return;
+  db.collection('ventas').doc(ventaActualId).delete().then(function(){ cerrarModalVenta(); });
+}
+
+/* -------------------- 11) RESUMEN DE VENTA -------------------- */
+function verResumenVenta(){
+  const nombre = document.getElementById('v-nombre').value.trim() || '(sin nombre)';
+  const cedula = document.getElementById('v-id').value.trim() || '-';
+  const celular = document.getElementById('v-celular').value.trim() || '-';
+  const fechaVenta = document.getElementById('v-fecha-venta').value;
+  const fechaEntrega = document.getElementById('v-fecha-entrega').value;
+  const status = statusTexto(document.getElementById('v-status').value);
+  const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
+  const abonado = ventaAbonos.reduce(function(s,a){ return s + Number(a.monto); }, 0);
+  const saldo = total - abonado;
+
+  let txt = 'RESUMEN DE VENTA - Myriedesign\n';
+  txt += '================================\n';
+  txt += 'Cliente: '+nombre+'\n';
+  txt += 'Cédula/ID: '+cedula+'\n';
+  txt += 'Celular: '+celular+'\n';
+  txt += 'Fecha de venta: '+fmtFecha(fechaVenta)+'\n\n';
+  txt += 'Producto(s):\n';
+  ventaItems.forEach(function(it){
+    txt += '  • '+it.cantidad+' x '+it.nombre+' — $'+it.precio.toFixed(2)+' c/u — Subtotal $'+(it.precio*it.cantidad).toFixed(2)+'\n';
+  });
+  txt += '\nTotal: $'+total.toFixed(2)+'\n\n';
+  txt += 'Abonos:\n';
+  if(ventaAbonos.length === 0){ txt += '  (sin abonos registrados)\n'; }
+  ventaAbonos.forEach(function(a){ txt += '  • '+fmtFecha(a.fecha)+' — $'+Number(a.monto).toFixed(2)+'\n'; });
+  txt += '\nTotal abonado: $'+abonado.toFixed(2)+'\n';
+  txt += 'Saldo pendiente: $'+saldo.toFixed(2)+'\n\n';
+  txt += 'Status: '+status+'\n';
+  txt += 'Fecha aproximada de entrega: '+fmtFecha(fechaEntrega)+'\n';
+
+  document.getElementById('resumen-texto').value = txt;
+  document.getElementById('modal-resumen').classList.remove('hidden');
+}
+function copiarResumen(){ copiarTexto(document.getElementById('resumen-texto')); }
+
+/* -------------------- 12) REPORTES -------------------- */
+function aplicarFiltrosReporte(){
+  const status = document.getElementById('rep-status').value;
+  const cliente = document.getElementById('rep-cliente').value.trim().toLowerCase();
+  const ventaDesde = document.getElementById('rep-venta-desde').value;
+  const ventaHasta = document.getElementById('rep-venta-hasta').value;
+  const entregaDesde = document.getElementById('rep-entrega-desde').value;
+  const entregaHasta = document.getElementById('rep-entrega-hasta').value;
+  const envioDesde = document.getElementById('rep-envio-desde').value;
+  const envioHasta = document.getElementById('rep-envio-hasta').value;
+
+  const filtradas = todasLasVentas.filter(function(v){
+    if(status && v.status !== status) return false;
+    if(cliente && (v.nombre||'').toLowerCase().indexOf(cliente) === -1) return false;
+    if(ventaDesde && (v.fechaVenta||'') < ventaDesde) return false;
+    if(ventaHasta && (v.fechaVenta||'') > ventaHasta) return false;
+    if(entregaDesde && (v.fechaEntrega||'') < entregaDesde) return false;
+    if(entregaHasta && (v.fechaEntrega||'') > entregaHasta) return false;
+    if(envioDesde && (v.fechaEnvio||'') < envioDesde) return false;
+    if(envioHasta && (v.fechaEnvio||'') > envioHasta) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('rep-tbody');
+  document.getElementById('rep-empty').classList.toggle('hidden', filtradas.length > 0);
+  tbody.innerHTML = filtradas.map(function(v){
+    const saldo = calcularSaldo(v);
+    const resumenProd = (v.items||[]).map(function(it){ return it.cantidad+'x '+it.nombre; }).join(', ');
+    return '<tr><td><span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></td>'+
+      '<td>'+escapeHtml(v.nombre||'-')+'</td>'+
+      '<td>'+escapeHtml(resumenProd)+'</td>'+
+      '<td>'+fmtFecha(v.fechaVenta)+'</td>'+
+      '<td>$'+Number(v.total||0).toFixed(2)+'</td>'+
+      '<td class="'+(saldo>0.004?'saldo-pos':'saldo-zero')+'">$'+saldo.toFixed(2)+'</td></tr>';
+  }).join('');
+  window._reporteFiltrado = filtradas;
+}
+function limpiarFiltrosReporte(){
+  ['rep-status','rep-cliente','rep-venta-desde','rep-venta-hasta','rep-entrega-desde','rep-entrega-hasta','rep-envio-desde','rep-envio-hasta'].forEach(function(id){
+    document.getElementById(id).value = '';
+  });
+  aplicarFiltrosReporte();
+}
+function exportarCSVReporte(){
+  const filas = window._reporteFiltrado || [];
+  let csv = 'Status,Cliente,Producto,Fecha Venta,Total,Saldo\n';
+  filas.forEach(function(v){
+    const saldo = calcularSaldo(v);
+    const resumenProd = (v.items||[]).map(function(it){ return it.cantidad+'x '+it.nombre; }).join(' / ');
+    const fila = [statusTexto(v.status), v.nombre||'', resumenProd, fmtFecha(v.fechaVenta), Number(v.total||0).toFixed(2), saldo.toFixed(2)];
+    csv += fila.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(',') + '\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'reporte_myriedesign_'+hoyISO()+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+/* -------------------- 13) UTILIDADES -------------------- */
+function escapeHtml(str){
+  return String(str==null?'':str).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function copiarTexto(textareaEl){
+  textareaEl.select();
+  textareaEl.setSelectionRange(0, 999999);
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(textareaEl.value).then(function(){
+      alert('Copiado al portapapeles ✓');
+    }).catch(function(){ document.execCommand('copy'); alert('Copiado ✓'); });
+  } else {
+    document.execCommand('copy');
+    alert('Copiado ✓');
+  }
+}
+
+/* -------------------- 14) ARRANQUE -------------------- */
+initFirebase();
+</script>
+</body>
+</html>
