@@ -12,7 +12,11 @@
 <link rel="icon" href="icon-192.png">
 
 <!-- Las 11 fuentes reales del negocio van incrustadas más abajo dentro de <style> (@font-face en base64),
-     tal como estaban en el prototipo "Toma de Pedidos" — ya no se usa Google Fonts para esto. -->
+     tal como estaban en el prototipo "Toma de Pedidos". La única fuente que no tenemos como archivo
+     real (Mont Heavy) usa una fuente parecida gratis de Google Fonts como aproximación. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap" rel="stylesheet">
 
 <!-- Firebase (gratis, plan Spark) -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -737,7 +741,8 @@ const FONTS = [
   { label: 'Madina',                family: "'TP Madina', cursive" },
   { label: 'Nova Quinta',           family: "'TP Nova Quinta', cursive" },
   { label: 'Sephora Hayden',        family: "'TP Sephora Hayden', cursive" },
-  { label: 'Tempting',              family: "'TP Tempting', cursive" }
+  { label: 'Tempting',              family: "'TP Tempting', cursive" },
+  { label: 'Mont Heavy',            family: "'Montserrat', sans-serif", weight: 900 }
 ];
 
 function construirGridFuentes(gridId){
@@ -946,6 +951,7 @@ function generarMensajeCotizacion(){
   if(cotizacionItems.length === 0){ alert('Agregá al menos una pieza.'); return; }
   let msg = '';
   cotizacionItems.forEach(function(it){
+    if(it.cadena) msg += 'Cadena: '+it.cadena+'\n\n';
     if(it.tipo === 'grabado'){
       if(it.tipoMedalla) msg += 'Tipo de medalla: '+it.tipoMedalla+'\n';
       if(it.caraFrontal){
@@ -967,7 +973,6 @@ function generarMensajeCotizacion(){
       }
       if(it.dijes) msg += 'Dijes: '+it.dijes+'\n';
     }
-    if(it.cadena) msg += 'Cadena: '+it.cadena+'\n';
     if(it.notas) msg += 'Notas: '+it.notas+'\n';
     msg += '\n';
   });
@@ -978,7 +983,7 @@ function generarMensajeCotizacion(){
   const abonarBs = abonar*tasa;
   const fecha = document.getElementById('cot-fecha').value || hoyISO();
 
-  msg += 'Total $: '+fmtDolar(total)+'\n';
+  msg += 'Total: '+fmtDolar(total)+' $\n';
   msg += 'Monto a Abonar para agendar 50%:\n';
   msg += '$ '+abonar.toFixed(2)+'\n';
   msg += 'Bs. '+fmtBs(abonarBs)+'\n\n';
