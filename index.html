@@ -860,8 +860,8 @@ function renderItemsCotizacion(){
   const el = document.getElementById('cot-items-list');
   el.innerHTML = cotizacionItems.map(function(it, idx){
     const subtotal = it.precio * it.cantidad;
-    const detalle = detalleItem(it);
-    return '<div class="item-row"><span>'+it.cantidad+'x '+escapeHtml(nombreProducto(it))+(detalle?' — '+escapeHtml(detalle):'')+' — $'+subtotal.toFixed(2)+'</span>'+
+    const campos = camposConEtiqueta(it);
+    return '<div class="item-row"><span>'+(campos?escapeHtml(campos)+' — ':'')+'Cantidad: '+it.cantidad+' — $'+subtotal.toFixed(2)+'</span>'+
       '<span class="x" onclick="quitarItemCotizacion('+idx+')">✕</span></div>';
   }).join('');
   const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
@@ -988,7 +988,7 @@ function renderCotizacionesPendientes(){
   const el = document.getElementById('cotizaciones-pendientes-list');
   if(cotizacionesCache.length === 0){ el.innerHTML = '<div class="empty-state">No hay cotizaciones pendientes.</div>'; return; }
   el.innerHTML = cotizacionesCache.map(function(c){
-    const resumenProd = c.items.map(function(it){ return it.cantidad+'x '+nombreProducto(it); }).join(', ');
+    const resumenProd = c.items.map(function(it){ return camposConEtiqueta(it); }).join(' | ');
     return '<div class="card" style="margin:8px 0">'+
       '<div style="font-size:.85rem">'+escapeHtml(c.referencia || '(sin referencia)')+'</div>'+
       '<div class="meta" style="color:var(--muted);font-size:.78rem;margin-top:4px">'+escapeHtml(resumenProd)+'</div>'+
@@ -1205,8 +1205,8 @@ function renderItemsVenta(){
   const el = document.getElementById('v-items-list');
   el.innerHTML = ventaItems.map(function(it, idx){
     const subtotal = it.precio*it.cantidad;
-    const detalle = detalleItem(it);
-    return '<div class="item-row"><span>'+it.cantidad+'x '+escapeHtml(nombreProducto(it))+(detalle?' — '+escapeHtml(detalle):'')+' — $'+subtotal.toFixed(2)+'</span>'+
+    const campos = camposConEtiqueta(it);
+    return '<div class="item-row"><span>'+(campos?escapeHtml(campos)+' — ':'')+'Cantidad: '+it.cantidad+' — $'+subtotal.toFixed(2)+'</span>'+
       '<span class="x" onclick="quitarItemVenta('+idx+')">✕</span></div>';
   }).join('');
   const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
@@ -1463,7 +1463,7 @@ function aplicarFiltrosReporte(){
   document.getElementById('rep-empty').classList.toggle('hidden', filtradas.length > 0);
   tbody.innerHTML = filtradas.map(function(v){
     const saldo = calcularSaldo(v);
-    const resumenProd = (v.items||[]).map(function(it){ return it.cantidad+'x '+nombreProducto(it); }).join(', ');
+    const resumenProd = (v.items||[]).map(function(it){ return camposConEtiqueta(it); }).join(' | ');
     return '<tr><td><span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></td>'+
       '<td>'+escapeHtml(v.nombre||'-')+'</td>'+
       '<td>'+escapeHtml(resumenProd)+'</td>'+
@@ -1484,7 +1484,7 @@ function exportarCSVReporte(){
   let csv = 'Status,Cliente,Producto,Fecha Venta,Total,Saldo\n';
   filas.forEach(function(v){
     const saldo = calcularSaldo(v);
-    const resumenProd = (v.items||[]).map(function(it){ return it.cantidad+'x '+nombreProducto(it); }).join(' / ');
+    const resumenProd = (v.items||[]).map(function(it){ return camposConEtiqueta(it); }).join(' | ');
     const fila = [statusTexto(v.status), v.nombre||'', resumenProd, fmtFecha(v.fechaVenta), Number(v.total||0).toFixed(2), saldo.toFixed(2)];
     csv += fila.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(',') + '\n';
   });
