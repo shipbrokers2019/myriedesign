@@ -317,6 +317,7 @@
       <h2>Cotizaciones pendientes</h2>
       <small class="hint">Cuando el cliente confirme la compra, tocá "Convertir en venta".</small>
       <div id="cotizaciones-pendientes-list"><div class="empty-state">Cargando...</div></div>
+      <button class="btn danger full" style="margin-top:10px" onclick="borrarTodasCotizaciones()">🗑 Borrar todas las cotizaciones pendientes</button>
     </div>
   </div>
 
@@ -1002,6 +1003,20 @@ function convertirEnVenta(cotizacionId){
   cotizacionOrigenId = cotizacionId;
   abrirFormVenta(null, c);
   mostrarTab('ventas');
+}
+function borrarTodasCotizaciones(){
+  if(cotizacionesCache.length === 0){ alert('No hay cotizaciones pendientes para borrar.'); return; }
+  const cantidad = cotizacionesCache.length;
+  if(!confirm('¿Seguro que querés borrar las '+cantidad+' cotizaciones pendientes? Esta acción no se puede deshacer.')) return;
+  const batch = db.batch();
+  cotizacionesCache.forEach(function(c){
+    batch.delete(db.collection('cotizaciones').doc(c.id));
+  });
+  batch.commit().then(function(){
+    alert('Listo, se borraron las cotizaciones pendientes.');
+  }).catch(function(err){
+    alert('Error borrando las cotizaciones: '+err.message);
+  });
 }
 
 /* -------------------- 7) VENTAS: LISTA -------------------- */
