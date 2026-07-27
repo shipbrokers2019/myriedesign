@@ -179,6 +179,9 @@
   .font-card.selected{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold);}
   .font-sample{margin:0;font-size:1.35rem;color:#000000;overflow-wrap:break-word;line-height:1.3;}
   .font-card-label{margin-top:4px;font-size:.65rem;color:#555555;}
+  /* Venta bloqueada por status "Enviado": no se puede modificar salvo el status, guardar y eliminar. */
+  .venta-bloqueada .x{display:none;}
+  .venta-bloqueada .font-grid{pointer-events:none;opacity:.5;}
 </style>
 </head>
 <body>
@@ -408,6 +411,9 @@
       <h2 id="modal-venta-titulo">Nueva venta</h2>
       <button class="close-x" onclick="cerrarModalVenta()">✕</button>
     </div>
+    <div id="v-bloqueo-aviso" class="hidden" style="background:var(--danger);color:#fff;padding:8px 10px;border-radius:8px;font-size:.82rem;margin-bottom:10px">
+      🔒 Esta venta ya fue enviada y no se puede modificar. Si fue un error, cambiá el status (abajo) para desbloquearla.
+    </div>
 
     <div class="section-title">Datos del cliente</div>
     <label>Nombre completo</label>
@@ -467,7 +473,7 @@
     <label>Notas</label>
     <textarea id="v-item-notas" rows="2"></textarea>
 
-    <button class="btn secondary full" style="margin-top:8px" onclick="agregarItemVenta()">+ Agregar pieza</button>
+    <button id="v-btn-agregar-pieza" class="btn secondary full" style="margin-top:8px" onclick="agregarItemVenta()">+ Agregar pieza</button>
     <div id="v-items-list"></div>
     <div class="total-line"><span>Total</span><span id="v-total">$0.00</span></div>
 
@@ -500,7 +506,7 @@
       <div><label>Monto $</label><input type="number" id="ab-monto" step="0.01" oninput="previsualizarAbonoBs()"></div>
       <div><label>Abono Bs. (auto)</label><input type="text" id="ab-monto-bs" readonly value="0.00"></div>
     </div>
-    <button class="btn secondary full" style="margin-top:8px" onclick="agregarAbono()">+ Agregar abono</button>
+    <button id="v-btn-agregar-abono" class="btn secondary full" style="margin-top:8px" onclick="agregarAbono()">+ Agregar abono</button>
     <div id="v-abonos-list"></div>
     <div class="total-line" style="color:var(--success)"><span>Abonado</span><span id="v-abonado">$0.00</span></div>
     <div class="total-line" style="color:var(--danger)"><span>Saldo</span><span id="v-saldo">$0.00</span></div>
@@ -511,14 +517,14 @@
     <label>Foto(s) de producto terminado</label>
     <div class="row">
       <input type="file" accept="image/*" id="v-foto-producto-file" style="flex:1;min-width:0">
-      <button class="btn secondary small" style="flex:0 0 auto" onclick="agregarFotoArchivo('productoFinal')">+ Agregar</button>
+      <button id="v-btn-agregar-foto-producto" class="btn secondary small" style="flex:0 0 auto" onclick="agregarFotoArchivo('productoFinal')">+ Agregar</button>
     </div>
     <div id="v-fotos-producto"></div>
 
     <label>Foto(s) de guía de envío</label>
     <div class="row">
       <input type="file" accept="image/*" id="v-foto-guia-file" style="flex:1;min-width:0">
-      <button class="btn secondary small" style="flex:0 0 auto" onclick="agregarFotoArchivo('guiaEnvio')">+ Agregar</button>
+      <button id="v-btn-agregar-foto-guia" class="btn secondary small" style="flex:0 0 auto" onclick="agregarFotoArchivo('guiaEnvio')">+ Agregar</button>
     </div>
     <div id="v-fotos-guia"></div>
 
@@ -1156,6 +1162,30 @@ function onFechaVentaChange(){
 function onStatusChange(){
   const st = document.getElementById('v-status').value;
   document.getElementById('v-fecha-envio-wrap').classList.toggle('hidden', st !== 'Enviado');
+  actualizarBloqueoVenta();
+}
+/* Una venta con status "Enviado" queda bloqueada: ya se despachó, no debería modificarse.
+   Se deja siempre habilitado el Status (por si fue un error y hay que revertirlo), Guardar
+   y Eliminar. Es reactivo: si cambian el status y ya no es "Enviado", se desbloquea al toque. */
+function actualizarBloqueoVenta(){
+  const bloqueada = (document.getElementById('v-status').value === 'Enviado');
+  const modalBox = document.querySelector('#modal-venta .modal-box');
+  if(modalBox) modalBox.classList.toggle('venta-bloqueada', bloqueada);
+  document.getElementById('v-bloqueo-aviso').classList.toggle('hidden', !bloqueada);
+  [
+    'v-nombre','v-id','v-celular','v-empresa-envio','v-direccion-envio',
+    'v-item-cadena','v-item-tipo-personalizado','v-item-tipo-grabado',
+    'v-item-nombre','v-item-nombre-adic','v-item-dijes',
+    'v-item-tipo-medalla','v-item-cara-frontal','v-item-cara-posterior',
+    'v-item-cantidad','v-item-precio','v-item-notas','v-btn-agregar-pieza',
+    'v-total-bs','v-fecha-venta','v-fecha-entrega','v-fecha-envio',
+    'ab-fecha','ab-tasa','ab-monto','v-btn-agregar-abono',
+    'v-foto-producto-file','v-btn-agregar-foto-producto',
+    'v-foto-guia-file','v-btn-agregar-foto-guia'
+  ].forEach(function(id){
+    const el = document.getElementById(id);
+    if(el) el.disabled = bloqueada;
+  });
 }
 
 function limpiarCamposPiezaVenta(){
