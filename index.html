@@ -14,7 +14,7 @@
 <!-- Fuentes gratis para la vista previa de grabado (Google Fonts) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Allura&family=Dancing+Script&family=Great+Vibes&family=Pacifico&family=Parisienne&family=Rouge+Script&family=Sacramento&family=Satisfy&family=Tangerine&family=Yesteryear&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Allura&family=Beau+Rivage&family=Caveat&family=Great+Vibes&family=Meddon&family=Mrs+Saint+Delafield&family=Patrick+Hand&family=Righteous&family=WindSong&family=Yellowtail&display=swap" rel="stylesheet">
 
 <!-- Firebase (gratis, plan Spark) -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -668,22 +668,25 @@ const PAGO_INFO = { metodo: 'Pago Movil', banco: 'Banesco', ci: '12664111', tele
 const ENVIOS_EMPRESAS = 'MRW, ZOOM, TEALCA';
 
 /* Tipografías de vista previa para el grabado del nombre.
-   Nota: son fuentes gratis de Google Fonts con estilo similar a las 11
-   fuentes originales (Adelia, Ananda, etc.) — no son los archivos exactos
+   Nota: son fuentes gratis de Google Fonts elegidas para que se parezcan al
+   ESTILO real de cada una de tus 11 fuentes originales (revisado contra sus
+   fichas en dafont.com: Adelia y Ananda son fuentes "cartoon" no script,
+   Daily es una fuente de molde retro bold, y el resto son scripts/caligrafía
+   pero con distinto grado de formalidad/trazo). No son los archivos exactos
    porque esos viven en tu computadora y no los subiste. Si querés las
    fuentes exactas, subime los 11 archivos .ttf/.otf y las reemplazo. */
 const FONTS = [
-  { label: 'Adelia',               family: "'Rouge Script', cursive" },
-  { label: 'Ananda',                family: "'Alex Brush', cursive" },
-  { label: 'Birds of Paradise',     family: "'Parisienne', cursive" },
-  { label: 'Cream Cake',            family: "'Sacramento', cursive" },
-  { label: 'Daily',                 family: "'Dancing Script', cursive" },
+  { label: 'Adelia',               family: "'Caveat', cursive" },
+  { label: 'Ananda',                family: "'Patrick Hand', cursive" },
+  { label: 'Birds of Paradise',     family: "'Yellowtail', cursive" },
+  { label: 'Cream Cake',            family: "'Mrs Saint Delafield', cursive" },
+  { label: 'Daily',                 family: "'Righteous', sans-serif" },
   { label: 'Floraison des Amours',  family: "'Allura', cursive" },
-  { label: 'Joseph Sophia',         family: "'Tangerine', cursive" },
+  { label: 'Joseph Sophia',         family: "'Alex Brush', cursive" },
   { label: 'Madina',                family: "'Great Vibes', cursive" },
-  { label: 'Nova Quinta',           family: "'Satisfy', cursive" },
-  { label: 'Sephora Hayden',        family: "'Yesteryear', cursive" },
-  { label: 'Tempting',              family: "'Pacifico', cursive" }
+  { label: 'Nova Quinta',           family: "'WindSong', cursive" },
+  { label: 'Sephora Hayden',        family: "'Meddon', cursive" },
+  { label: 'Tempting',              family: "'Beau Rivage', cursive" }
 ];
 
 function construirGridFuentes(gridId){
