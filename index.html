@@ -1064,10 +1064,10 @@ function renderCotizacionesPendientes(){
   const el = document.getElementById('cotizaciones-pendientes-list');
   if(cotizacionesCache.length === 0){ el.innerHTML = '<div class="empty-state">No hay cotizaciones pendientes.</div>'; return; }
   el.innerHTML = cotizacionesCache.map(function(c){
-    const resumenProd = c.items.map(function(it){ return camposConEtiqueta(it); }).join(' | ');
+    const resumenProd = c.items.map(function(it){ return camposConEtiquetaLineas(it); }).join('<br>');
     return '<div class="card" style="margin:8px 0">'+
       '<div style="font-size:.85rem">'+escapeHtml(c.referencia || '(sin referencia)')+'</div>'+
-      '<div class="meta" style="color:var(--muted);font-size:.78rem;margin-top:4px">'+escapeHtml(resumenProd)+'</div>'+
+      '<div class="meta" style="color:var(--muted);font-size:.78rem;margin-top:4px;line-height:1.5">'+resumenProd+'</div>'+
       '<div class="total-line" style="font-size:.9rem;margin-top:6px"><span>Total</span><span>$'+Number(c.total).toFixed(2)+'</span></div>'+
       '<button class="btn full small" style="margin-top:8px" onclick="convertirEnVenta(\''+c.id+'\')">Convertir en venta →</button>'+
       '</div>';
@@ -1118,11 +1118,11 @@ function renderVentasLista(){
   if(todasLasVentas.length === 0){ el.innerHTML = '<div class="empty-state">Todavía no hay ventas registradas.</div>'; return; }
   el.innerHTML = todasLasVentas.map(function(v){
     const saldo = calcularSaldo(v);
-    const resumenProd = (v.items||[]).map(function(it){ return camposConEtiqueta(it); }).join(' | ');
+    const resumenProd = (v.items||[]).map(function(it){ return camposConEtiquetaLineas(it); }).join('<br>');
     return '<div class="card venta-card" onclick="abrirFormVenta(\''+v.id+'\')">'+
       '<div class="top-line"><span class="cliente-nombre">'+escapeHtml(v.nombre||'(sin nombre)')+'</span>'+
       '<span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></div>'+
-      '<div class="meta">'+escapeHtml(resumenProd)+'</div>'+
+      '<div class="meta" style="line-height:1.5">'+resumenProd+'</div>'+
       '<div class="meta">Venta: '+fmtFecha(v.fechaVenta)+' · Entrega aprox: '+fmtFecha(v.fechaEntrega)+'</div>'+
       '<div class="money-line"><span>Total: $'+Number(v.total||0).toFixed(2)+'</span>'+
       '<span class="'+(saldo>0.004?'saldo-pos':'saldo-zero')+'">Saldo: $'+saldo.toFixed(2)+'</span></div>'+
