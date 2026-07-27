@@ -180,6 +180,8 @@
     background:var(--bg3);border-radius:8px;padding:8px 10px;margin-top:8px;font-size:.85rem;
   }
   .item-row .x{color:var(--danger);cursor:pointer;font-weight:700;padding:0 6px;}
+  .item-row-pieza{align-items:flex-start;}
+  .item-row-pieza span:first-child{line-height:1.5;}
   .total-line{
     display:flex;justify-content:space-between;font-size:1.05rem;font-weight:700;color:var(--gold);
     margin-top:12px;border-top:1px dashed var(--border);padding-top:10px;
@@ -220,8 +222,8 @@
   .modal-box .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
   .close-x{background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;line-height:1;}
   .empty-state{color:var(--muted);text-align:center;padding:24px 12px;font-size:.85rem;}
-  .abono-row{display:flex;gap:8px;align-items:center;background:var(--bg3);padding:8px;border-radius:8px;margin-top:6px;}
-  .abono-row span{flex:1;font-size:.82rem;}
+  .abono-row{display:flex;gap:8px;align-items:flex-start;background:var(--bg3);padding:8px;border-radius:8px;margin-top:6px;}
+  .abono-row span{flex:1;font-size:.82rem;line-height:1.5;}
   .config-warning{
     background:#e0525233;border:1px solid var(--danger);color:#ffb3b3;padding:10px;border-radius:8px;font-size:.78rem;margin:12px;
   }
@@ -299,7 +301,7 @@
       </div>
 
       <div class="section-title">Detalle de la pieza</div>
-      <label>Cadena</label>
+      <label>Pieza</label>
       <input type="text" id="cot-cadena" placeholder="Ej: Ristra, cadena cubana...">
 
       <div class="row" style="margin-top:10px">
@@ -323,7 +325,7 @@
       </div>
 
       <div id="cot-fieldset-grabado" class="hidden">
-        <label>Tipo de medalla</label>
+        <label>Tipo</label>
         <input type="text" id="cot-tipo-medalla" placeholder="Ej: corazón, redonda...">
 
         <label>Cara Frontal</label>
@@ -510,7 +512,7 @@
     </div>
 
     <div id="v-item-fieldset-grabado" class="hidden">
-      <label>Tipo de medalla</label>
+      <label>Tipo</label>
       <input type="text" id="v-item-tipo-medalla" placeholder="Ej: corazón, redonda...">
 
       <label>Cara Frontal</label>
@@ -860,23 +862,31 @@ function detalleCorto(it){
   return [it.cadena, it.dijes].filter(Boolean).join(' · ');
 }
 /* Campos con su etiqueta, usada en la tarjeta de "Ventas registradas":
-   Personalizado → Cadena, Nombre a grabar, Nombre adic., Dijes.
-   Grabado → Cadena, Tipo de medalla, Cara frontal, Cara posterior. */
-function camposConEtiqueta(it){
+   Personalizado → Pieza, Nombre a grabar, Nombre adic., Dijes.
+   Grabado → Pieza, Tipo, Cara frontal, Cara posterior. */
+function camposArray(it){
   if(it.tipo === 'grabado'){
     return [
-      it.cadena ? ('Cadena: '+it.cadena) : '',
-      it.tipoMedalla ? ('Tipo de medalla: '+it.tipoMedalla) : '',
+      it.cadena ? ('Pieza: '+it.cadena) : '',
+      it.tipoMedalla ? ('Tipo: '+it.tipoMedalla) : '',
       it.caraFrontal ? ('Cara frontal: '+it.caraFrontal) : '',
       it.caraPosterior ? ('Cara posterior: '+it.caraPosterior) : ''
-    ].filter(Boolean).join(' · ');
+    ].filter(Boolean);
   }
   return [
-    it.cadena ? ('Cadena: '+it.cadena) : '',
+    it.cadena ? ('Pieza: '+it.cadena) : '',
     it.nombre ? ('Nombre a grabar: '+it.nombre) : '',
     it.nombreAdicional ? ('Nombre adic.: '+it.nombreAdicional) : '',
     it.dijes ? ('Dijes: '+it.dijes) : ''
-  ].filter(Boolean).join(' · ');
+  ].filter(Boolean);
+}
+function camposConEtiqueta(it){
+  return camposArray(it).join(' · ');
+}
+/* Igual que camposConEtiqueta pero cada campo en su propia línea (HTML),
+   usada en la lista de piezas agregadas del Cotizador y la Venta. */
+function camposConEtiquetaLineas(it){
+  return camposArray(it).map(escapeHtml).join('<br>');
 }
 
 /* -------------------- 6) COTIZADOR -------------------- */
@@ -926,8 +936,8 @@ function renderItemsCotizacion(){
   const el = document.getElementById('cot-items-list');
   el.innerHTML = cotizacionItems.map(function(it, idx){
     const subtotal = it.precio * it.cantidad;
-    const campos = camposConEtiqueta(it);
-    return '<div class="item-row"><span>'+(campos?escapeHtml(campos)+' — ':'')+'Cantidad: '+it.cantidad+' — $'+subtotal.toFixed(2)+'</span>'+
+    const campos = camposConEtiquetaLineas(it);
+    return '<div class="item-row item-row-pieza"><span>'+(campos?campos+'<br>':'')+'Cantidad: '+it.cantidad+'<br>$'+subtotal.toFixed(2)+'</span>'+
       '<span class="x" onclick="quitarItemCotizacion('+idx+')">✕</span></div>';
   }).join('');
   const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
@@ -951,9 +961,9 @@ function generarMensajeCotizacion(){
   if(cotizacionItems.length === 0){ alert('Agregá al menos una pieza.'); return; }
   let msg = '';
   cotizacionItems.forEach(function(it){
-    if(it.cadena) msg += 'Cadena: '+it.cadena+'\n\n';
+    if(it.cadena) msg += 'Pieza: '+it.cadena+'\n\n';
     if(it.tipo === 'grabado'){
-      if(it.tipoMedalla) msg += 'Tipo de medalla: '+it.tipoMedalla+'\n';
+      if(it.tipoMedalla) msg += 'Tipo: '+it.tipoMedalla+'\n';
       if(it.caraFrontal){
         msg += 'Cara Frontal:\n'+it.caraFrontal+'\n';
         if(it.tipografiaFrontal) msg += 'Tipografía: '+it.tipografiaFrontal+'\n';
@@ -1000,7 +1010,7 @@ function copiarMensajeCotizacion(){ copiarTexto(document.getElementById('cot-men
 function enviarWhatsAppCotizacion(){
   const msg = document.getElementById('cot-mensaje').value;
   if(!msg){ alert('Generá el mensaje primero.'); return; }
-  window.open('https://wa.me/?text='+encodeURIComponent(msg), '_blank');
+  window.open('https://wa.me/?text='+encodeURIComponent(msg.normalize('NFC')), '_blank');
 }
 
 function guardarCotizacion(){
@@ -1295,8 +1305,8 @@ function renderItemsVenta(){
   const el = document.getElementById('v-items-list');
   el.innerHTML = ventaItems.map(function(it, idx){
     const subtotal = it.precio*it.cantidad;
-    const campos = camposConEtiqueta(it);
-    return '<div class="item-row"><span>'+(campos?escapeHtml(campos)+' — ':'')+'Cantidad: '+it.cantidad+' — $'+subtotal.toFixed(2)+'</span>'+
+    const campos = camposConEtiquetaLineas(it);
+    return '<div class="item-row item-row-pieza"><span>'+(campos?campos+'<br>':'')+'Cantidad: '+it.cantidad+'<br>$'+subtotal.toFixed(2)+'</span>'+
       '<span class="x" onclick="quitarItemVenta('+idx+')">✕</span></div>';
   }).join('');
   const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
@@ -1323,8 +1333,15 @@ function quitarAbono(idx){ ventaAbonos.splice(idx,1); renderAbonosVenta(); }
 function renderAbonosVenta(){
   const el = document.getElementById('v-abonos-list');
   el.innerHTML = ventaAbonos.map(function(a, idx){
-    const bsTxt = a.tasaBcv ? ' (Bs. '+Number(a.montoBs||0).toFixed(2)+' @ '+Number(a.tasaBcv).toFixed(2)+')' : '';
-    return '<div class="abono-row"><span>'+fmtFecha(a.fecha)+' — $'+Number(a.monto).toFixed(2)+bsTxt+'</span>'+
+    const lineas = [
+      'Fecha: '+fmtFecha(a.fecha),
+      'Monto: $'+Number(a.monto).toFixed(2)
+    ];
+    if(a.tasaBcv){
+      lineas.push('Bs.: '+Number(a.montoBs||0).toFixed(2));
+      lineas.push('Tasa BCV: '+Number(a.tasaBcv).toFixed(2));
+    }
+    return '<div class="abono-row"><span>'+lineas.map(escapeHtml).join('<br>')+'</span>'+
       '<span class="x" onclick="quitarAbono('+idx+')">✕</span></div>';
   }).join('');
   recalcularSaldoModal();
@@ -1490,7 +1507,7 @@ function verResumenVenta(){
   ventaItems.forEach(function(it, idx){
     txt += '  Pieza '+(idx+1)+' ('+(it.tipo==='grabado'?'Grabado':'Personalizado')+'):\n';
     if(it.tipo === 'grabado'){
-      if(it.tipoMedalla) txt += '    Tipo de medalla: '+it.tipoMedalla+'\n';
+      if(it.tipoMedalla) txt += '    Tipo: '+it.tipoMedalla+'\n';
       txt += '    Cara Frontal: '+it.caraFrontal+'\n';
       if(it.tipografiaFrontal) txt += '    Tipografía: '+it.tipografiaFrontal+'\n';
       if(it.caraPosterior) txt += '    Cara Posterior: '+it.caraPosterior+'\n';
@@ -1502,7 +1519,7 @@ function verResumenVenta(){
       if(it.tipografiaAdicional) txt += '    Tipografía: '+it.tipografiaAdicional+'\n';
       if(it.dijes) txt += '    Dijes: '+it.dijes+'\n';
     }
-    if(it.cadena) txt += '    Cadena: '+it.cadena+'\n';
+    if(it.cadena) txt += '    Pieza: '+it.cadena+'\n';
     if(it.notas) txt += '    Notas: '+it.notas+'\n';
     txt += '    Cantidad: '+it.cantidad+' — Precio $'+it.precio.toFixed(2)+' c/u — Subtotal $'+(it.precio*it.cantidad).toFixed(2)+'\n';
   });
