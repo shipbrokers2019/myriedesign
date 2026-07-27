@@ -983,9 +983,9 @@ function generarMensajeCotizacion(){
   const abonarBs = abonar*tasa;
   const fecha = document.getElementById('cot-fecha').value || hoyISO();
 
-  msg += 'Total: '+fmtDolar(total)+' $\n';
+  msg += 'Total: $'+fmtDolar(total)+'\n';
   msg += 'Monto a Abonar para agendar 50%:\n';
-  msg += '$ '+abonar.toFixed(2)+'\n';
+  msg += '$'+abonar.toFixed(2)+'\n';
   msg += 'Bs. '+fmtBs(abonarBs)+'\n\n';
   msg += PAGO_INFO.metodo+'\n'+PAGO_INFO.banco+'\nC.I '+PAGO_INFO.ci+'\n'+PAGO_INFO.telefono+'\n\n';
   msg += 'Realizamos envios por:\n'+ENVIOS_EMPRESAS+'\n\n';
