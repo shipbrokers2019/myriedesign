@@ -792,6 +792,25 @@ function detalleCorto(it){
   }
   return [it.cadena, it.dijes].filter(Boolean).join(' · ');
 }
+/* Campos con su etiqueta, usada en la tarjeta de "Ventas registradas":
+   Personalizado → Cadena, Nombre a grabar, Nombre adic., Dijes.
+   Grabado → Cadena, Tipo de medalla, Cara frontal, Cara posterior. */
+function camposConEtiqueta(it){
+  if(it.tipo === 'grabado'){
+    return [
+      it.cadena ? ('Cadena: '+it.cadena) : '',
+      it.tipoMedalla ? ('Tipo de medalla: '+it.tipoMedalla) : '',
+      it.caraFrontal ? ('Cara frontal: '+it.caraFrontal) : '',
+      it.caraPosterior ? ('Cara posterior: '+it.caraPosterior) : ''
+    ].filter(Boolean).join(' · ');
+  }
+  return [
+    it.cadena ? ('Cadena: '+it.cadena) : '',
+    it.nombre ? ('Nombre a grabar: '+it.nombre) : '',
+    it.nombreAdicional ? ('Nombre adic.: '+it.nombreAdicional) : '',
+    it.dijes ? ('Dijes: '+it.dijes) : ''
+  ].filter(Boolean).join(' · ');
+}
 
 /* -------------------- 6) COTIZADOR -------------------- */
 function limpiarCamposPiezaCot(){
@@ -1008,10 +1027,7 @@ function renderVentasLista(){
   if(todasLasVentas.length === 0){ el.innerHTML = '<div class="empty-state">Todavía no hay ventas registradas.</div>'; return; }
   el.innerHTML = todasLasVentas.map(function(v){
     const saldo = calcularSaldo(v);
-    const resumenProd = (v.items||[]).map(function(it){
-      const det = detalleCorto(it);
-      return it.cantidad+'x '+nombreProducto(it)+(det?' — '+det:'');
-    }).join(', ');
+    const resumenProd = (v.items||[]).map(function(it){ return camposConEtiqueta(it); }).join(' | ');
     return '<div class="card venta-card" onclick="abrirFormVenta(\''+v.id+'\')">'+
       '<div class="top-line"><span class="cliente-nombre">'+escapeHtml(v.nombre||'(sin nombre)')+'</span>'+
       '<span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></div>'+
