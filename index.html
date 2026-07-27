@@ -310,7 +310,7 @@
       </div>
 
       <div id="cot-fieldset-personalizado">
-        <label>Nombre a grabar</label>
+        <label>Nombre</label>
         <input type="text" id="cot-nombre" oninput="actualizarMuestraGrid('cot-nombre','cot-font-grid-nombre')">
         <label>Tipografía del nombre (tocá una para elegirla)</label>
         <div class="font-grid" id="cot-font-grid-nombre"></div>
@@ -497,7 +497,7 @@
     </div>
 
     <div id="v-item-fieldset-personalizado">
-      <label>Nombre a grabar</label>
+      <label>Nombre</label>
       <input type="text" id="v-item-nombre" oninput="actualizarMuestraGrid('v-item-nombre','v-item-font-grid-nombre')">
       <label>Tipografía del nombre (tocá una para elegirla)</label>
       <div class="font-grid" id="v-item-font-grid-nombre"></div>
@@ -862,7 +862,7 @@ function detalleCorto(it){
   return [it.cadena, it.dijes].filter(Boolean).join(' · ');
 }
 /* Campos con su etiqueta, usada en la tarjeta de "Ventas registradas":
-   Personalizado → Pieza, Nombre a grabar, Nombre adic., Dijes.
+   Personalizado → Pieza, Nombre, Nombre adic., Dijes.
    Grabado → Pieza, Tipo, Cara frontal, Cara posterior. */
 function camposArray(it){
   if(it.tipo === 'grabado'){
@@ -875,7 +875,7 @@ function camposArray(it){
   }
   return [
     it.cadena ? ('Pieza: '+it.cadena) : '',
-    it.nombre ? ('Nombre a grabar: '+it.nombre) : '',
+    it.nombre ? ('Nombre: '+it.nombre) : '',
     it.nombreAdicional ? ('Nombre adic.: '+it.nombreAdicional) : '',
     it.dijes ? ('Dijes: '+it.dijes) : ''
   ].filter(Boolean);
