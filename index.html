@@ -733,6 +733,20 @@ function cargarTasaBcvAutomatica(forzado){
         inputGlobal.value = tasa.toFixed(2);
         guardarTasaBcvDia();
       }
+      // El botón "Actualizar" es una acción explícita: también refresca la
+      // Tasa BCV del Cotizador y de Abonos, aunque ya tuvieran un valor cargado.
+      if(forzado){
+        const cotTasa = document.getElementById('cot-tasa');
+        if(cotTasa && document.activeElement !== cotTasa){
+          cotTasa.value = tasa.toFixed(2);
+          actualizarMontosCotizacion();
+        }
+        const abTasa = document.getElementById('ab-tasa');
+        if(abTasa && document.activeElement !== abTasa){
+          abTasa.value = tasa.toFixed(2);
+          previsualizarAbonoBs();
+        }
+      }
       if(forzado) alert('Tasa BCV actualizada: '+tasa.toFixed(2)+' Bs.');
     })
     .catch(function(err){
