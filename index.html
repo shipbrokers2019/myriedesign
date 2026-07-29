@@ -285,6 +285,7 @@
         <label style="margin-top:0">Tasa BCV de hoy (se usa en toda la app)</label>
         <input type="number" id="tasa-bcv-global" step="0.01" placeholder="0.00" oninput="guardarTasaBcvDia()">
       </div>
+      <button type="button" class="btn secondary small" style="margin-bottom:0" onclick="cargarTasaBcvAutomatica(true)" title="Traer la tasa oficial BCV de hoy">🔄 Actualizar</button>
     </div>
     <small class="hint" id="tasa-bcv-meta">Todavía no se ha cargado.</small>
   </div>
@@ -705,9 +706,39 @@ function cargarTasaBcvDia(){
     if(abTasa && !abTasa.value){
       abTasa.value = tasaBcvDia || '';
     }
+    // Si todavía nadie cargó (ni a mano) la tasa de HOY, intentamos traerla sola
+    // desde una API pública gratuita que republica la tasa oficial del BCV.
+    if(data.fecha !== hoyISO()){
+      cargarTasaBcvAutomatica(false);
+    }
   }, function(err){
     console.error('No se pudo leer la Tasa BCV del día:', err);
   });
+}
+/* Trae la tasa oficial BCV del día desde una API pública gratuita (sin API key,
+   no somos afiliados al BCV, solo republican su dato oficial). Si forzado=false
+   (carga automática al abrir la app) solo la aplica cuando todavía no hay una
+   tasa cargada hoy y nadie está escribiendo en el campo en ese momento, para no
+   pisar lo que alguien ya puso a mano. Si forzado=true (botón "Actualizar"),
+   siempre la trae de nuevo y avisa el resultado. */
+function cargarTasaBcvAutomatica(forzado){
+  fetch('https://ve.dolarapi.com/v1/dolares/oficial')
+    .then(function(res){ return res.json(); })
+    .then(function(data){
+      const tasa = Number(data.promedio || data.venta || data.compra);
+      if(!tasa || isNaN(tasa)) throw new Error('Respuesta sin tasa válida');
+      const inputGlobal = document.getElementById('tasa-bcv-global');
+      if(!inputGlobal) return;
+      if(forzado || document.activeElement !== inputGlobal){
+        inputGlobal.value = tasa.toFixed(2);
+        guardarTasaBcvDia();
+      }
+      if(forzado) alert('Tasa BCV actualizada: '+tasa.toFixed(2)+' Bs.');
+    })
+    .catch(function(err){
+      console.error('No se pudo obtener la tasa BCV automática:', err);
+      if(forzado) alert('No se pudo traer la tasa automática ahora mismo. Cargala a mano si hace falta.');
+    });
 }
 function guardarTasaBcvDia(){
   const val = parseFloat(document.getElementById('tasa-bcv-global').value) || 0;
