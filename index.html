@@ -775,10 +775,17 @@ function construirGridFuentes(gridId){
       '<div class="font-card-label">'+escapeHtml(f.label)+'</div></div>';
   }).join('');
 }
-function initFontGridClicks(gridId, key){
+function initFontGridClicks(gridId, key, requiredInputId){
   document.getElementById(gridId).addEventListener('click', function(e){
     const card = e.target.closest('.font-card');
     if(!card) return;
+    if(requiredInputId){
+      const campo = document.getElementById(requiredInputId);
+      if(campo && !campo.value.trim()){
+        alert('Completá el campo de texto primero para poder elegir la tipografía.');
+        return;
+      }
+    }
     this.querySelectorAll('.font-card').forEach(function(c){ c.classList.remove('selected'); });
     card.classList.add('selected');
     fuentesSel[key] = card.dataset.label;
@@ -1697,13 +1704,13 @@ function copiarTexto(textareaEl){
   ['cot-font-grid-adic','cotAdic'],
   ['cot-font-grid-frontal','cotFrontal'],
   ['cot-font-grid-posterior','cotPosterior'],
-  ['v-item-font-grid-nombre','vNombre'],
-  ['v-item-font-grid-adic','vAdic'],
-  ['v-item-font-grid-frontal','vFrontal'],
-  ['v-item-font-grid-posterior','vPosterior']
+  ['v-item-font-grid-nombre','vNombre','v-item-nombre'],
+  ['v-item-font-grid-adic','vAdic','v-item-nombre-adic'],
+  ['v-item-font-grid-frontal','vFrontal','v-item-cara-frontal'],
+  ['v-item-font-grid-posterior','vPosterior','v-item-cara-posterior']
 ].forEach(function(pair){
   construirGridFuentes(pair[0]);
-  initFontGridClicks(pair[0], pair[1]);
+  initFontGridClicks(pair[0], pair[1], pair[2]);
 });
 elegirTipoPieza('cot', 'personalizado');
 elegirTipoPieza('v-item', 'personalizado');
