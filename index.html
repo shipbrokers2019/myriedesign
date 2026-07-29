@@ -289,14 +289,14 @@
     <small class="hint" id="tasa-bcv-meta">Todavía no se ha cargado.</small>
   </div>
 
-  <!-- ---------- RESUMEN DE VENTAS (reemplaza a la Tasa BCV solo en la pestaña Ventas) ---------- -->
+  <!-- ---------- RESUMEN DE VENTAS (reemplaza a la Tasa BCV en las pestañas Ventas y Reportes) ---------- -->
   <div class="card hidden" id="ventas-resumen-card" style="margin-bottom:0;padding:10px 14px;">
     <div class="row">
-      <div style="flex:1">
+      <div style="flex:1;border:2px solid var(--gold);border-radius:10px;padding:8px;text-align:center">
         <label style="margin-top:0">Total ventas</label>
         <div id="ventas-resumen-total" style="font-size:1.2rem;font-weight:700;color:var(--success)">$0.00</div>
       </div>
-      <div style="flex:1">
+      <div style="flex:1;border:2px solid var(--gold);border-radius:10px;padding:8px;text-align:center">
         <label style="margin-top:0">Saldo pendiente</label>
         <div id="ventas-resumen-saldo" style="font-size:1.2rem;font-weight:700;color:var(--danger)">$0.00</div>
       </div>
@@ -864,9 +864,10 @@ function mostrarTab(nombre){
     document.getElementById('tab-'+t).classList.toggle('hidden', t !== nombre);
     document.getElementById('navbtn-'+t).classList.toggle('active', t === nombre);
   });
-  document.getElementById('tasa-bcv-card').classList.toggle('hidden', nombre === 'ventas');
-  document.getElementById('ventas-resumen-card').classList.toggle('hidden', nombre !== 'ventas');
-  if(nombre === 'ventas'){ actualizarResumenVentas(); }
+  const mostrarResumen = (nombre === 'ventas' || nombre === 'reportes');
+  document.getElementById('tasa-bcv-card').classList.toggle('hidden', mostrarResumen);
+  document.getElementById('ventas-resumen-card').classList.toggle('hidden', !mostrarResumen);
+  if(mostrarResumen){ actualizarResumenVentas(); }
   if(nombre === 'reportes'){ aplicarFiltrosReporte(); }
 }
 /* Suma el total y el saldo pendiente de todas las ventas, para el resumen
@@ -1153,7 +1154,7 @@ function renderVentasLista(){
   el.innerHTML = todasLasVentas.map(function(v){
     const saldo = calcularSaldo(v);
     const resumenProd = (v.items||[]).map(function(it){
-      return (it.tipo==='grabado'?'Grabado':'Personalizado')+'<br>'+camposConEtiquetaLineas(it);
+      return '<b style="color:var(--info)">'+(it.tipo==='grabado'?'Grabado':'Personalizado')+'</b><br>'+camposConEtiquetaLineas(it);
     }).join('<br>');
     return '<div class="card venta-card" onclick="abrirFormVenta(\''+v.id+'\')">'+
       '<div class="top-line"><span class="cliente-nombre">'+escapeHtml(v.nombre||'(sin nombre)')+'</span>'+
@@ -1552,8 +1553,6 @@ function verResumenVenta(){
   txt += 'Cliente: '+nombre+'\n';
   txt += 'Cédula/ID: '+cedula+'\n';
   txt += 'Celular: '+celular+'\n';
-  if(empresaEnvio) txt += empresaEnvio+'\n';
-  if(direccionEnvio) txt += direccionEnvio+'\n';
   txt += 'Fecha de venta: '+fmtFecha(fechaVenta)+'\n\n';
   txt += 'Pieza(s):\n';
   ventaItems.forEach(function(it, idx){
@@ -1591,6 +1590,9 @@ function verResumenVenta(){
   txt += 'Saldo pendiente: $'+saldo.toFixed(2)+'\n\n';
   txt += 'Status: '+status+'\n';
   txt += 'Fecha aproximada de entrega: '+fmtFecha(fechaEntrega)+'\n';
+  if(empresaEnvio || direccionEnvio) txt += '\n';
+  if(empresaEnvio) txt += empresaEnvio+'\n';
+  if(direccionEnvio) txt += direccionEnvio+'\n';
 
   document.getElementById('resumen-texto').value = txt;
   renderGaleriaFotos();
