@@ -1341,12 +1341,23 @@ function agregarItemVenta(){
   renderItemsVenta();
 }
 function quitarItemVenta(idx){ ventaItems.splice(idx,1); renderItemsVenta(); }
+/* Tocar una pieza ya agregada carga sus datos de vuelta en "Detalle de la pieza"
+   para poder modificarlos, y la saca de la lista (se vuelve a agregar, ya editada,
+   con el botón "+ Agregar pieza"). */
+function editarItemVenta(idx){
+  if(document.getElementById('v-status').value === 'Enviado') return;
+  const it = ventaItems[idx];
+  if(!it) return;
+  precargarPiezaVenta(it);
+  ventaItems.splice(idx,1);
+  renderItemsVenta();
+}
 function renderItemsVenta(){
   const el = document.getElementById('v-items-list');
   el.innerHTML = ventaItems.map(function(it, idx){
     const subtotal = it.precio*it.cantidad;
     const campos = camposConEtiquetaLineas(it);
-    return '<div class="item-row item-row-pieza"><span>'+(campos?campos+'<br>':'')+'Cantidad: '+it.cantidad+'<br>$'+subtotal.toFixed(2)+'</span>'+
+    return '<div class="item-row item-row-pieza"><span onclick="editarItemVenta('+idx+')" style="cursor:pointer">'+(campos?campos+'<br>':'')+'Cantidad: '+it.cantidad+'<br>$'+subtotal.toFixed(2)+'</span>'+
       '<span class="x" onclick="quitarItemVenta('+idx+')">✕</span></div>';
   }).join('');
   const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
