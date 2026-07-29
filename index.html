@@ -1628,7 +1628,7 @@ function aplicarFiltrosReporte(){
   tbody.innerHTML = filtradas.map(function(v){
     const saldo = calcularSaldo(v);
     const resumenProd = (v.items||[]).map(function(it){
-      return (it.tipo==='grabado'?'Grabado':'Personalizado')+'<br>'+camposConEtiquetaLineas(it);
+      return '<b style="color:var(--info)">'+(it.tipo==='grabado'?'Grabado':'Personalizado')+'</b><br>'+camposConEtiquetaLineas(it);
     }).join('<br>');
     return '<tr><td><span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></td>'+
       '<td>'+escapeHtml(v.nombre||'-')+'</td>'+
