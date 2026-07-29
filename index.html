@@ -279,7 +279,7 @@
   </div>
 
   <!-- ---------- TASA BCV DEL DÍA (compartida, se usa en toda la app) ---------- -->
-  <div class="card" style="margin-bottom:0;padding:10px 14px;">
+  <div class="card" id="tasa-bcv-card" style="margin-bottom:0;padding:10px 14px;">
     <div class="row" style="align-items:flex-end">
       <div style="flex:1">
         <label style="margin-top:0">Tasa BCV de hoy (se usa en toda la app)</label>
@@ -287,6 +287,20 @@
       </div>
     </div>
     <small class="hint" id="tasa-bcv-meta">Todavía no se ha cargado.</small>
+  </div>
+
+  <!-- ---------- RESUMEN DE VENTAS (reemplaza a la Tasa BCV solo en la pestaña Ventas) ---------- -->
+  <div class="card hidden" id="ventas-resumen-card" style="margin-bottom:0;padding:10px 14px;">
+    <div class="row">
+      <div style="flex:1">
+        <label style="margin-top:0">Total ventas</label>
+        <div id="ventas-resumen-total" style="font-size:1.2rem;font-weight:700;color:var(--success)">$0.00</div>
+      </div>
+      <div style="flex:1">
+        <label style="margin-top:0">Saldo pendiente</label>
+        <div id="ventas-resumen-saldo" style="font-size:1.2rem;font-weight:700;color:var(--danger)">$0.00</div>
+      </div>
+    </div>
   </div>
 
   <!-- ---------- TAB: COTIZAR ---------- -->
@@ -850,7 +864,21 @@ function mostrarTab(nombre){
     document.getElementById('tab-'+t).classList.toggle('hidden', t !== nombre);
     document.getElementById('navbtn-'+t).classList.toggle('active', t === nombre);
   });
+  document.getElementById('tasa-bcv-card').classList.toggle('hidden', nombre === 'ventas');
+  document.getElementById('ventas-resumen-card').classList.toggle('hidden', nombre !== 'ventas');
+  if(nombre === 'ventas'){ actualizarResumenVentas(); }
   if(nombre === 'reportes'){ aplicarFiltrosReporte(); }
+}
+/* Suma el total y el saldo pendiente de todas las ventas, para el resumen
+   que se muestra arriba de "Ventas registradas" en vez de la Tasa BCV. */
+function actualizarResumenVentas(){
+  const elTotal = document.getElementById('ventas-resumen-total');
+  const elSaldo = document.getElementById('ventas-resumen-saldo');
+  if(!elTotal || !elSaldo) return;
+  const total = todasLasVentas.reduce(function(s,v){ return s + Number(v.total||0); }, 0);
+  const saldo = todasLasVentas.reduce(function(s,v){ return s + calcularSaldo(v); }, 0);
+  elTotal.textContent = '$'+total.toFixed(2);
+  elSaldo.textContent = '$'+saldo.toFixed(2);
 }
 
 function detalleItem(it){
@@ -1120,15 +1148,18 @@ function calcularSaldo(venta){
 }
 function renderVentasLista(){
   const el = document.getElementById('ventas-list');
+  actualizarResumenVentas();
   if(todasLasVentas.length === 0){ el.innerHTML = '<div class="empty-state">Todavía no hay ventas registradas.</div>'; return; }
   el.innerHTML = todasLasVentas.map(function(v){
     const saldo = calcularSaldo(v);
-    const resumenProd = (v.items||[]).map(function(it){ return camposConEtiquetaLineas(it); }).join('<br>');
+    const resumenProd = (v.items||[]).map(function(it){
+      return (it.tipo==='grabado'?'Grabado':'Personalizado')+'<br>'+camposConEtiquetaLineas(it);
+    }).join('<br>');
     return '<div class="card venta-card" onclick="abrirFormVenta(\''+v.id+'\')">'+
       '<div class="top-line"><span class="cliente-nombre">'+escapeHtml(v.nombre||'(sin nombre)')+'</span>'+
       '<span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></div>'+
       '<div class="meta" style="line-height:1.5">'+resumenProd+'</div>'+
-      '<div class="meta">Venta: '+fmtFecha(v.fechaVenta)+' · Entrega aprox: '+fmtFecha(v.fechaEntrega)+'</div>'+
+      '<div class="meta" style="line-height:1.5">Venta: '+fmtFecha(v.fechaVenta)+'<br>Entrega aprox: '+fmtFecha(v.fechaEntrega)+'</div>'+
       '<div class="money-line"><span>Total: $'+Number(v.total||0).toFixed(2)+'</span>'+
       '<span class="'+(saldo>0.004?'saldo-pos':'saldo-zero')+'">Saldo: $'+saldo.toFixed(2)+'</span></div>'+
       '</div>';
@@ -1319,6 +1350,8 @@ function renderItemsVenta(){
   }).join('');
   const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
   document.getElementById('v-total').textContent = '$'+total.toFixed(2);
+  const tasaHoy = parseFloat(document.getElementById('tasa-bcv-global').value) || 0;
+  if(tasaHoy > 0){ document.getElementById('v-total-bs').value = (total*tasaHoy).toFixed(2); }
   recalcularSaldoModal();
 }
 function previsualizarAbonoBs(){
@@ -1331,6 +1364,13 @@ function agregarAbono(){
   const tasa = parseFloat(document.getElementById('ab-tasa').value) || 0;
   const monto = parseFloat(document.getElementById('ab-monto').value);
   if(isNaN(monto) || monto <= 0){ alert('Ingresá un monto válido.'); return; }
+  const totalVenta = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
+  const abonadoPrevio = ventaAbonos.reduce(function(s,a){ return s + Number(a.monto); }, 0);
+  const saldoDisponible = totalVenta - abonadoPrevio;
+  if(monto > saldoDisponible + 0.004){
+    alert('Ese monto supera el saldo pendiente de la venta. Máximo a abonar: $'+saldoDisponible.toFixed(2));
+    return;
+  }
   const montoBs = tasa*monto;
   ventaAbonos.push({ fecha: fecha, tasaBcv: tasa, monto: monto, montoBs: montoBs });
   document.getElementById('ab-monto').value = '';
@@ -1498,6 +1538,8 @@ function verResumenVenta(){
   const nombre = document.getElementById('v-nombre').value.trim() || '(sin nombre)';
   const cedula = document.getElementById('v-id').value.trim() || '-';
   const celular = document.getElementById('v-celular').value.trim() || '-';
+  const empresaEnvio = document.getElementById('v-empresa-envio').value.trim();
+  const direccionEnvio = document.getElementById('v-direccion-envio').value.trim();
   const fechaVenta = document.getElementById('v-fecha-venta').value;
   const fechaEntrega = document.getElementById('v-fecha-entrega').value;
   const status = statusTexto(document.getElementById('v-status').value);
@@ -1510,10 +1552,14 @@ function verResumenVenta(){
   txt += 'Cliente: '+nombre+'\n';
   txt += 'Cédula/ID: '+cedula+'\n';
   txt += 'Celular: '+celular+'\n';
+  if(empresaEnvio) txt += empresaEnvio+'\n';
+  if(direccionEnvio) txt += direccionEnvio+'\n';
   txt += 'Fecha de venta: '+fmtFecha(fechaVenta)+'\n\n';
   txt += 'Pieza(s):\n';
   ventaItems.forEach(function(it, idx){
-    txt += '  Pieza '+(idx+1)+' ('+(it.tipo==='grabado'?'Grabado':'Personalizado')+'):\n';
+    txt += '  Pieza '+(idx+1)+':\n';
+    txt += '    '+(it.tipo==='grabado'?'Grabado':'Personalizado')+'\n';
+    if(it.cadena) txt += '    Pieza: '+it.cadena+'\n';
     if(it.tipo === 'grabado'){
       if(it.tipoMedalla) txt += '    Tipo: '+it.tipoMedalla+'\n';
       txt += '    Cara Frontal: '+it.caraFrontal+'\n';
@@ -1527,7 +1573,6 @@ function verResumenVenta(){
       if(it.tipografiaAdicional) txt += '    Tipografía: '+it.tipografiaAdicional+'\n';
       if(it.dijes) txt += '    Dijes: '+it.dijes+'\n';
     }
-    if(it.cadena) txt += '    Pieza: '+it.cadena+'\n';
     if(it.notas) txt += '    Notas: '+it.notas+'\n';
     txt += '    Cantidad: '+it.cantidad+' — Precio $'+it.precio.toFixed(2)+' c/u — Subtotal $'+(it.precio*it.cantidad).toFixed(2)+'\n';
   });
@@ -1537,8 +1582,10 @@ function verResumenVenta(){
   txt += '\nAbonos:\n';
   if(ventaAbonos.length === 0){ txt += '  (sin abonos registrados)\n'; }
   ventaAbonos.forEach(function(a){
-    const bsTxt = a.tasaBcv ? ' (Bs. '+Number(a.montoBs||0).toFixed(2)+' @ tasa '+Number(a.tasaBcv).toFixed(2)+')' : '';
-    txt += '  • '+fmtFecha(a.fecha)+' — $'+Number(a.monto).toFixed(2)+bsTxt+'\n';
+    txt += '  '+fmtFecha(a.fecha)+' - '+Number(a.monto).toFixed(2)+'$\n';
+    if(a.tasaBcv){
+      txt += '  (Bs. '+Number(a.montoBs||0).toFixed(2)+' / tasa '+Number(a.tasaBcv).toFixed(2)+')\n';
+    }
   });
   txt += '\nTotal abonado: $'+abonado.toFixed(2)+'\n';
   txt += 'Saldo pendiente: $'+saldo.toFixed(2)+'\n\n';
@@ -1578,10 +1625,12 @@ function aplicarFiltrosReporte(){
   document.getElementById('rep-empty').classList.toggle('hidden', filtradas.length > 0);
   tbody.innerHTML = filtradas.map(function(v){
     const saldo = calcularSaldo(v);
-    const resumenProd = (v.items||[]).map(function(it){ return camposConEtiqueta(it); }).join(' | ');
+    const resumenProd = (v.items||[]).map(function(it){
+      return (it.tipo==='grabado'?'Grabado':'Personalizado')+'<br>'+camposConEtiquetaLineas(it);
+    }).join('<br>');
     return '<tr><td><span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></td>'+
       '<td>'+escapeHtml(v.nombre||'-')+'</td>'+
-      '<td>'+escapeHtml(resumenProd)+'</td>'+
+      '<td style="line-height:1.5">'+resumenProd+'</td>'+
       '<td>'+fmtFecha(v.fechaVenta)+'</td>'+
       '<td>$'+Number(v.total||0).toFixed(2)+'</td>'+
       '<td class="'+(saldo>0.004?'saldo-pos':'saldo-zero')+'">$'+saldo.toFixed(2)+'</td></tr>';
