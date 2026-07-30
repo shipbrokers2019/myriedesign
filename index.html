@@ -1082,7 +1082,7 @@ function generarMensajeCotizacion(){
   if(cotizacionItems.length === 0){ alert('Agregá al menos una pieza.'); return; }
   let msg = '';
   cotizacionItems.forEach(function(it){
-    if(it.cadena) msg += 'Pieza: '+it.cadena+' ('+it.cantidad+')'+'\n\n';
+    if(it.cadena) msg += 'Pieza: ('+it.cantidad+') '+it.cadena+'\n\n';
     if(it.tipo === 'grabado'){
       if(it.tipoMedalla) msg += 'Tipo: '+it.tipoMedalla+'\n';
       if(it.caraFrontal){
