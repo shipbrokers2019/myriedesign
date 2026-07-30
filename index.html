@@ -1694,7 +1694,7 @@ function aplicarFiltrosReporte(){
       const esGrabado = it.tipo === 'grabado';
       const colorTipo = esGrabado ? 'var(--info)' : '#ff9800';
       const etiquetaTipo = (esGrabado ? 'Grabado' : 'Personalizado')+' ('+(idx+1)+')';
-      return '<b style="color:'+colorTipo+'">'+etiquetaTipo+'</b><br>'+camposConEtiquetaLineas(it);
+      return '<b style="color:'+colorTipo+'">'+etiquetaTipo+'</b><br>'+camposConEtiquetaLineas(it)+'<br>Cantidad: '+it.cantidad;
     }).join('<br>');
     return '<tr><td><span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></td>'+
       '<td>'+escapeHtml(v.nombre||'-')+'</td>'+
