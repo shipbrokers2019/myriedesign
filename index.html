@@ -1023,7 +1023,7 @@ function renderItemsCotizacion(){
   el.innerHTML = cotizacionItems.map(function(it, idx){
     const subtotal = it.precio * it.cantidad;
     const campos = camposConEtiquetaLineas(it);
-    return '<div class="item-row item-row-pieza"><span>'+(campos?campos+'<br>':'')+'Cantidad: '+it.cantidad+'<br>$'+subtotal.toFixed(2)+'</span>'+
+    return '<div class="item-row item-row-pieza"><span onclick="editarItemCotizacion('+idx+')" style="cursor:pointer">'+(campos?campos+'<br>':'')+'Cantidad: '+it.cantidad+'<br>$'+subtotal.toFixed(2)+'</span>'+
       '<span class="x" onclick="quitarItemCotizacion('+idx+')">✕</span></div>';
   }).join('');
   const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
@@ -1031,6 +1031,41 @@ function renderItemsCotizacion(){
   actualizarMontosCotizacion();
 }
 function quitarItemCotizacion(idx){ cotizacionItems.splice(idx,1); renderItemsCotizacion(); }
+/* Rellena "Detalle de la pieza" del Cotizador con los datos de una pieza ya
+   agregada, para poder corregirla (ej. un precio mal puesto) sin reescribir
+   todo. Usada por editarItemCotizacion(). */
+function precargarPiezaCotizacion(it){
+  if(!it) return;
+  elegirTipoPieza('cot', it.tipo || 'personalizado');
+  document.getElementById('cot-cadena').value = it.cadena || '';
+  document.getElementById('cot-notas').value = it.notas || '';
+  document.getElementById('cot-cantidad').value = it.cantidad || 1;
+  document.getElementById('cot-precio').value = (it.precio !== undefined && it.precio !== null) ? it.precio : '';
+  if(it.tipo === 'grabado'){
+    document.getElementById('cot-tipo-medalla').value = it.tipoMedalla || '';
+    document.getElementById('cot-cara-frontal').value = it.caraFrontal || '';
+    document.getElementById('cot-cara-posterior').value = it.caraPosterior || '';
+    seleccionarFuenteEnGrid('cot-font-grid-frontal', it.tipografiaFrontal, 'cotFrontal');
+    seleccionarFuenteEnGrid('cot-font-grid-posterior', it.tipografiaPosterior, 'cotPosterior');
+    actualizarMuestraGrid('cot-cara-frontal','cot-font-grid-frontal');
+    actualizarMuestraGrid('cot-cara-posterior','cot-font-grid-posterior');
+  } else {
+    document.getElementById('cot-nombre').value = it.nombre || '';
+    document.getElementById('cot-nombre-adic').value = it.nombreAdicional || '';
+    document.getElementById('cot-dijes').value = it.dijes || '';
+    seleccionarFuenteEnGrid('cot-font-grid-nombre', it.tipografiaNombre, 'cotNombre');
+    seleccionarFuenteEnGrid('cot-font-grid-adic', it.tipografiaAdicional, 'cotAdic');
+    actualizarMuestraGrid('cot-nombre','cot-font-grid-nombre');
+    actualizarMuestraGrid('cot-nombre-adic','cot-font-grid-adic');
+  }
+}
+function editarItemCotizacion(idx){
+  const it = cotizacionItems[idx];
+  if(!it) return;
+  precargarPiezaCotizacion(it);
+  cotizacionItems.splice(idx,1);
+  renderItemsCotizacion();
+}
 
 function actualizarMontosCotizacion(){
   const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
