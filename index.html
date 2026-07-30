@@ -1242,7 +1242,10 @@ function renderVentasLista(){
   el.innerHTML = todasLasVentas.map(function(v){
     const saldo = calcularSaldo(v);
     const resumenProd = (v.items||[]).map(function(it){
-      return '<b style="color:var(--info)">'+(it.tipo==='grabado'?'Grabado':'Personalizado')+'</b><br>'+camposConEtiquetaLineas(it);
+      const esGrabado = it.tipo === 'grabado';
+      const colorTipo = esGrabado ? 'var(--info)' : '#ff9800';
+      const etiquetaTipo = (esGrabado ? 'Grabado' : 'Personalizado')+' ('+it.cantidad+')';
+      return '<b style="color:'+colorTipo+'">'+etiquetaTipo+'</b><br>'+camposConEtiquetaLineas(it);
     }).join('<br>');
     return '<div class="card venta-card" onclick="abrirFormVenta(\''+v.id+'\')">'+
       '<div class="top-line"><span class="cliente-nombre">'+escapeHtml(v.nombre||'(sin nombre)')+'</span>'+
