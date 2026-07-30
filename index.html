@@ -1690,11 +1690,11 @@ function aplicarFiltrosReporte(){
   document.getElementById('rep-empty').classList.toggle('hidden', filtradas.length > 0);
   tbody.innerHTML = filtradas.map(function(v){
     const saldo = calcularSaldo(v);
-    const resumenProd = (v.items||[]).map(function(it, idx){
+    const resumenProd = (v.items||[]).map(function(it){
       const esGrabado = it.tipo === 'grabado';
       const colorTipo = esGrabado ? 'var(--info)' : '#ff9800';
-      const etiquetaTipo = (esGrabado ? 'Grabado' : 'Personalizado')+' ('+(idx+1)+')';
-      return '<b style="color:'+colorTipo+'">'+etiquetaTipo+'</b><br>'+camposConEtiquetaLineas(it)+'<br>Cantidad: '+it.cantidad;
+      const etiquetaTipo = (esGrabado ? 'Grabado' : 'Personalizado')+' ('+it.cantidad+')';
+      return '<b style="color:'+colorTipo+'">'+etiquetaTipo+'</b><br>'+camposConEtiquetaLineas(it);
     }).join('<br>');
     return '<tr><td><span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></td>'+
       '<td>'+escapeHtml(v.nombre||'-')+'</td>'+
