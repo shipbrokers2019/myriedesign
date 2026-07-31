@@ -1678,8 +1678,6 @@ function verResumenVenta(){
     txt += '    Cantidad: '+it.cantidad+' — Precio $'+it.precio.toFixed(2)+' c/u — Subtotal $'+(it.precio*it.cantidad).toFixed(2)+'\n';
   });
   txt += '\nTotal: $'+total.toFixed(2)+'\n';
-  const totalBsVal = parseFloat(document.getElementById('v-total-bs').value);
-  if(!isNaN(totalBsVal)) txt += 'Total Bs.: '+totalBsVal.toFixed(2)+'\n';
   txt += '\nAbonos:\n';
   if(ventaAbonos.length === 0){ txt += '  (sin abonos registrados)\n'; }
   ventaAbonos.forEach(function(a){
