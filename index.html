@@ -756,6 +756,19 @@ function cargarTasaBcvAutomatica(forzado){
 }
 function guardarTasaBcvDia(){
   const val = parseFloat(document.getElementById('tasa-bcv-global').value) || 0;
+  // Si alguien cambia la tasa de arriba a mano, la Tasa BCV del Cotizador (y la
+  // de Abonos, si el modal de venta está abierto) la siguen al toque, salvo que
+  // esté escribiendo ahí mismo en ese momento.
+  const cotTasa = document.getElementById('cot-tasa');
+  if(cotTasa && document.activeElement !== cotTasa){
+    cotTasa.value = val || '';
+    actualizarMontosCotizacion();
+  }
+  const abTasa = document.getElementById('ab-tasa');
+  if(abTasa && document.activeElement !== abTasa){
+    abTasa.value = val || '';
+    previsualizarAbonoBs();
+  }
   clearTimeout(guardarTasaBcvTimeout);
   guardarTasaBcvTimeout = setTimeout(function(){
     if(!db || !currentUser) return;
