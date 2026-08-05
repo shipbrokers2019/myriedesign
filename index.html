@@ -1322,17 +1322,44 @@ function borrarTodasCotizaciones(){
     alert('Error borrando las cotizaciones: '+err.message);
   });
 }
+function descargarRespaldoVentasCSV(){
+  let csv = 'ID,Status,Cliente,Cedula,Celular,Empresa Envio,Direccion Envio,Fecha Venta,Fecha Entrega,Fecha Envio,Productos,Total USD,Total Bs,Abonos,Saldo Pendiente\n';
+  todasLasVentas.forEach(function(v){
+    const saldo = calcularSaldo(v);
+    const resumenProd = (v.items||[]).map(function(it){
+      return tipoPiezaTexto(it.tipo)+' x'+(it.cantidad||1)+' ($'+Number(it.precio||0).toFixed(2)+'): '+camposConEtiqueta(it);
+    }).join(' | ');
+    const resumenAbonos = (v.abonos||[]).map(function(a){
+      return '$'+Number(a.monto||0).toFixed(2)+' (Bs.'+Number(a.montoBs||0).toFixed(2)+' @ '+(a.tasaBcv||'')+' - '+fmtFecha(a.fecha)+')';
+    }).join(' | ');
+    const fila = [
+      v.id, statusTexto(v.status), v.nombre||'', v.cedula||'', v.celular||'',
+      v.empresaEnvio||'', v.direccionEnvio||'',
+      fmtFecha(v.fechaVenta), fmtFecha(v.fechaEntrega), fmtFecha(v.fechaEnvio),
+      resumenProd, Number(v.total||0).toFixed(2), (v.totalBs!=null?v.totalBs:''),
+      resumenAbonos, saldo.toFixed(2)
+    ];
+    csv += fila.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(',') + '\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'respaldo_ventas_myriedesign_'+hoyISO()+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 function borrarTodasVentas(){
   if(todasLasVentas.length === 0){ alert('No hay ventas registradas para borrar.'); return; }
   const cantidad = todasLasVentas.length;
-  if(!confirm('¿Seguro que querés borrar las '+cantidad+' ventas registradas? Esta acción no se puede deshacer y no hay forma de recuperarlas después.')) return;
+  if(!confirm('¿Seguro que querés borrar las '+cantidad+' ventas registradas? Antes de borrar se va a descargar un CSV de respaldo con todos los datos (no incluye las fotos). Esta acción no se puede deshacer en Firebase.')) return;
   if(!confirm('Confirmá de nuevo: se van a borrar TODAS las ventas (clientes, abonos, fotos, todo). ¿Continuar?')) return;
+  descargarRespaldoVentasCSV();
   const batch = db.batch();
   todasLasVentas.forEach(function(v){
     batch.delete(db.collection('ventas').doc(v.id));
   });
   batch.commit().then(function(){
-    alert('Listo, se borraron todas las ventas registradas.');
+    alert('Listo. Se descargó un CSV de respaldo (revisá tus descargas) y se borraron todas las ventas registradas.');
   }).catch(function(err){
     alert('Error borrando las ventas: '+err.message);
   });
