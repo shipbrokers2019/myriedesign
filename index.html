@@ -309,6 +309,7 @@
     <div class="card">
       <h2>Nueva cotización</h2>
       <small class="hint">Todavía no hace falta el nombre del cliente. Cuando confirme la compra, la convertís en venta y ahí pedís sus datos.</small>
+      <button type="button" id="cot-cancelar-edicion" class="btn secondary full hidden" style="margin-top:8px" onclick="cancelarEdicionCotizacion()">✕ Cancelar edición y empezar una nueva</button>
 
       <label>Referencia (Instagram, apodo, nº de WhatsApp...)</label>
       <input type="text" id="cot-referencia" placeholder="Ej: IG @juanita / +58 412...">
@@ -324,6 +325,7 @@
 
       <div class="row" style="margin-top:10px">
         <button type="button" class="btn full" id="cot-tipo-personalizado" onclick="elegirTipoPieza('cot','personalizado')">Personalizado</button>
+        <button type="button" class="btn secondary full" id="cot-tipo-bisuteria" onclick="elegirTipoPieza('cot','bisuteria')">Bisutería</button>
         <button type="button" class="btn secondary full" id="cot-tipo-grabado" onclick="elegirTipoPieza('cot','grabado')">Grabado</button>
       </div>
 
@@ -340,6 +342,11 @@
 
         <label>Dijes</label>
         <input type="text" id="cot-dijes" placeholder="Ej: corazón, inicial...">
+      </div>
+
+      <div id="cot-fieldset-bisuteria" class="hidden">
+        <label>Tipo</label>
+        <textarea id="cot-bisuteria-tipo" rows="2"></textarea>
       </div>
 
       <div id="cot-fieldset-grabado" class="hidden">
@@ -376,7 +383,7 @@
         <div><label>Total Bs.</label><input type="text" id="cot-total-bs" readonly value="0.00"></div>
       </div>
       <div class="row">
-        <div><label>Monto a abonar $ (50%)</label><input type="text" id="cot-abonar" readonly value="0.00"></div>
+        <div><label id="cot-abonar-label">Monto a abonar $ (50%)</label><input type="number" step="0.01" id="cot-abonar" oninput="onAbonarManualChange()" value="0.00"></div>
         <div><label>Monto a abonar Bs.</label><input type="text" id="cot-abonar-bs" readonly value="0.00"></div>
       </div>
       <label>Restante $</label>
@@ -391,7 +398,7 @@
         <button class="btn full" style="margin-top:6px;background:#25D366;color:#fff" onclick="enviarWhatsAppCotizacion()">💬 Enviar por WhatsApp</button>
       </div>
 
-      <button class="btn full" style="margin-top:10px;background:var(--success);color:#fff" onclick="guardarCotizacion()">✓ Guardar cotización</button>
+      <button id="cot-guardar-btn" class="btn full" style="margin-top:10px;background:var(--success);color:#fff" onclick="guardarCotizacion()">✓ Guardar cotización</button>
     </div>
 
     <div class="card">
@@ -410,6 +417,7 @@
     <div class="card">
       <h2>Ventas registradas</h2>
       <div id="ventas-list"><div class="empty-state">Cargando...</div></div>
+      <button class="btn danger full" style="margin-top:10px" onclick="borrarTodasVentas()">🗑 Borrar todas las ventas registradas</button>
     </div>
   </div>
 
@@ -511,6 +519,7 @@
 
     <div class="row" style="margin-top:10px">
       <button type="button" class="btn full" id="v-item-tipo-personalizado" onclick="elegirTipoPieza('v-item','personalizado')">Personalizado</button>
+      <button type="button" class="btn secondary full" id="v-item-tipo-bisuteria" onclick="elegirTipoPieza('v-item','bisuteria')">Bisutería</button>
       <button type="button" class="btn secondary full" id="v-item-tipo-grabado" onclick="elegirTipoPieza('v-item','grabado')">Grabado</button>
     </div>
 
@@ -527,6 +536,11 @@
 
       <label>Dijes</label>
       <input type="text" id="v-item-dijes" placeholder="Ej: corazón, inicial...">
+    </div>
+
+    <div id="v-item-fieldset-bisuteria" class="hidden">
+      <label>Tipo</label>
+      <textarea id="v-item-bisuteria-tipo" rows="2"></textarea>
     </div>
 
     <div id="v-item-fieldset-grabado" class="hidden">
@@ -784,6 +798,8 @@ function guardarTasaBcvDia(){
 /* -------------------- 2) ESTADO GLOBAL -------------------- */
 let currentUser = null;
 let cotizacionItems = [];       // items de la cotización en construcción
+let abonarManual = false;       // true si el usuario tocó "Monto a abonar" a mano (deja de forzar 50%)
+let cotizacionEditandoId = null; // id de la cotización pendiente que se está editando (null = nueva)
 let todasLasVentas = [];        // cache local de ventas para filtros de reporte
 let ventaActualId = null;       // id de la venta que se está editando (null = nueva)
 let ventaItems = [];            // items de la venta en el modal
@@ -866,8 +882,10 @@ function actualizarMuestraGrid(inputId, gridId){
 function elegirTipoPieza(prefix, tipo){
   tipoPiezaActual[prefix] = tipo;
   document.getElementById(prefix+'-tipo-personalizado').className = (tipo==='personalizado') ? 'btn full' : 'btn secondary full';
+  document.getElementById(prefix+'-tipo-bisuteria').className = (tipo==='bisuteria') ? 'btn full' : 'btn secondary full';
   document.getElementById(prefix+'-tipo-grabado').className = (tipo==='grabado') ? 'btn full' : 'btn secondary full';
   document.getElementById(prefix+'-fieldset-personalizado').classList.toggle('hidden', tipo!=='personalizado');
+  document.getElementById(prefix+'-fieldset-bisuteria').classList.toggle('hidden', tipo!=='bisuteria');
   document.getElementById(prefix+'-fieldset-grabado').classList.toggle('hidden', tipo!=='grabado');
 }
 /* Rellena visiblemente el formulario "Detalle de la pieza" del modal de Venta
@@ -888,6 +906,8 @@ function precargarPiezaVenta(it){
     seleccionarFuenteEnGrid('v-item-font-grid-posterior', it.tipografiaPosterior, 'vPosterior');
     actualizarMuestraGrid('v-item-cara-frontal','v-item-font-grid-frontal');
     actualizarMuestraGrid('v-item-cara-posterior','v-item-font-grid-posterior');
+  } else if(it.tipo === 'bisuteria'){
+    document.getElementById('v-item-bisuteria-tipo').value = it.tipoBisuteria || '';
   } else {
     document.getElementById('v-item-nombre').value = it.nombre || '';
     document.getElementById('v-item-nombre-adic').value = it.nombreAdicional || '';
@@ -947,6 +967,18 @@ function actualizarResumenVentas(){
   elSaldo.textContent = '$'+saldo.toFixed(2);
 }
 
+/* Nombre y color visual del tipo de pieza (Personalizado/Bisutería/Grabado),
+   usados en Ventas registradas, Reportes y el mensaje de WhatsApp. */
+function tipoPiezaTexto(tipo){
+  if(tipo === 'grabado') return 'Grabado';
+  if(tipo === 'bisuteria') return 'Bisutería';
+  return 'Personalizado';
+}
+function tipoPiezaColor(tipo){
+  if(tipo === 'grabado') return 'var(--info)';
+  if(tipo === 'bisuteria') return '#ec4899';
+  return '#ff9800';
+}
 function detalleItem(it){
   if(it.tipo === 'grabado'){
     return [it.cadena, it.tipoMedalla?('Medalla: '+it.tipoMedalla):'', it.caraPosterior?('Posterior: '+it.caraPosterior):''].filter(Boolean).join(' · ');
@@ -972,6 +1004,12 @@ function camposArray(it){
       it.caraPosterior ? ('Cara posterior: '+it.caraPosterior) : ''
     ].filter(Boolean);
   }
+  if(it.tipo === 'bisuteria'){
+    return [
+      it.cadena ? ('Pieza: '+it.cadena) : '',
+      it.tipoBisuteria ? ('Tipo: '+it.tipoBisuteria) : ''
+    ].filter(Boolean);
+  }
   return [
     it.cadena ? ('Pieza: '+it.cadena) : '',
     it.nombre ? ('Nombre: '+it.nombre) : '',
@@ -990,7 +1028,7 @@ function camposConEtiquetaLineas(it){
 
 /* -------------------- 6) COTIZADOR -------------------- */
 function limpiarCamposPiezaCot(){
-  ['cot-cadena','cot-nombre','cot-nombre-adic','cot-dijes','cot-tipo-medalla','cot-cara-frontal','cot-cara-posterior','cot-notas'].forEach(function(id){
+  ['cot-cadena','cot-nombre','cot-nombre-adic','cot-dijes','cot-tipo-medalla','cot-cara-frontal','cot-cara-posterior','cot-bisuteria-tipo','cot-notas'].forEach(function(id){
     document.getElementById(id).value = '';
   });
   document.getElementById('cot-cantidad').value = 1;
@@ -1009,6 +1047,7 @@ function agregarItemCotizacion(){
     cadena: document.getElementById('cot-cadena').value.trim(),
     nombre:'', nombreAdicional:'', dijes:'', tipografiaNombre:'', tipografiaAdicional:'',
     tipoMedalla:'', caraFrontal:'', caraPosterior:'', tipografiaFrontal:'', tipografiaPosterior:'',
+    tipoBisuteria:'',
     notas: document.getElementById('cot-notas').value.trim(),
     cantidad: parseInt(document.getElementById('cot-cantidad').value) || 1,
     precio: parseFloat(document.getElementById('cot-precio').value) || 0
@@ -1020,6 +1059,8 @@ function agregarItemCotizacion(){
     item.dijes = document.getElementById('cot-dijes').value.trim();
     item.tipografiaNombre = fuentesSel.cotNombre || '';
     item.tipografiaAdicional = fuentesSel.cotAdic || '';
+  } else if(tipo === 'bisuteria'){
+    item.tipoBisuteria = document.getElementById('cot-bisuteria-tipo').value.trim();
   } else {
     item.tipoMedalla = document.getElementById('cot-tipo-medalla').value.trim();
     item.caraFrontal = document.getElementById('cot-cara-frontal').value.trim();
@@ -1062,6 +1103,8 @@ function precargarPiezaCotizacion(it){
     seleccionarFuenteEnGrid('cot-font-grid-posterior', it.tipografiaPosterior, 'cotPosterior');
     actualizarMuestraGrid('cot-cara-frontal','cot-font-grid-frontal');
     actualizarMuestraGrid('cot-cara-posterior','cot-font-grid-posterior');
+  } else if(it.tipo === 'bisuteria'){
+    document.getElementById('cot-bisuteria-tipo').value = it.tipoBisuteria || '';
   } else {
     document.getElementById('cot-nombre').value = it.nombre || '';
     document.getElementById('cot-nombre-adic').value = it.nombreAdicional || '';
@@ -1080,13 +1123,24 @@ function editarItemCotizacion(idx){
   renderItemsCotizacion();
 }
 
+/* Si el usuario escribe un monto distinto en "Monto a abonar", dejamos de
+   pisarlo con el 50% automático hasta que se guarde/reinicie la cotización. */
+function onAbonarManualChange(){
+  abonarManual = true;
+  actualizarMontosCotizacion();
+}
 function actualizarMontosCotizacion(){
   const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
   const tasa = parseFloat(document.getElementById('cot-tasa').value) || 0;
-  const abonar = total*0.5;
+  const abonarInput = document.getElementById('cot-abonar');
+  if(!abonarManual){
+    abonarInput.value = (total*0.5).toFixed(2);
+  }
+  const abonar = parseFloat(abonarInput.value) || 0;
+  const pct = total > 0 ? Math.round((abonar/total)*100) : 50;
+  document.getElementById('cot-abonar-label').textContent = 'Monto a abonar $ ('+pct+'%)';
   document.getElementById('cot-total-2').value = total.toFixed(2);
   document.getElementById('cot-total-bs').value = (total*tasa).toFixed(2);
-  document.getElementById('cot-abonar').value = abonar.toFixed(2);
   document.getElementById('cot-abonar-bs').value = (abonar*tasa).toFixed(2);
   document.getElementById('cot-restante').value = (total-abonar).toFixed(2);
 }
@@ -1095,28 +1149,30 @@ function generarMensajeCotizacion(){
   if(cotizacionItems.length === 0){ alert('Agregá al menos una pieza.'); return; }
   let msg = '';
   cotizacionItems.forEach(function(it){
-    msg += (it.tipo === 'grabado' ? 'Grabado' : 'Personalizado')+'\n\n';
-    if(it.cadena) msg += 'Pieza: ('+it.cantidad+') '+it.cadena+'\n\n';
+    msg += tipoPiezaTexto(it.tipo)+'\n\n';
+    if(it.cadena) msg += '-'+it.cadena+'\n\n';
     if(it.tipo === 'grabado'){
       if(it.tipoMedalla) msg += 'Tipo: '+it.tipoMedalla+'\n';
       if(it.caraFrontal){
         msg += 'Cara Frontal:\n'+it.caraFrontal+'\n';
-        if(it.tipografiaFrontal) msg += 'Tipografía: '+it.tipografiaFrontal+'\n';
+        msg += it.tipografiaFrontal ? ('Tipografía: '+it.tipografiaFrontal+'\n') : 'Tipografía por definir\n';
       } else {
         msg += 'Cara Frontal: Imagen\n';
       }
       if(it.caraPosterior){
-        msg += 'Cara Posterior:\n'+it.caraPosterior+'\n';
-        if(it.tipografiaPosterior) msg += 'Tipografía: '+it.tipografiaPosterior+'\n';
+        msg += 'Cara Posterior: '+it.caraPosterior+'\n';
+        msg += it.tipografiaPosterior ? ('Tipografía: '+it.tipografiaPosterior+'\n') : 'Tipografía por definir\n';
       }
+    } else if(it.tipo === 'bisuteria'){
+      if(it.tipoBisuteria) msg += 'Tipo: '+it.tipoBisuteria+'\n';
     } else {
-      msg += 'Nombre:\n'+it.nombre+'\n';
-      if(it.tipografiaNombre) msg += 'Tipografía: '+it.tipografiaNombre+'\n';
+      msg += 'Nombre:\n✅'+it.nombre+'\n';
+      msg += it.tipografiaNombre ? ('Tipografía: '+it.tipografiaNombre+'\n') : 'Tipografía por definir\n';
       if(it.nombreAdicional){
         msg += 'Nombre Adic.:\n'+it.nombreAdicional+'\n';
-        if(it.tipografiaAdicional) msg += 'Tipografía: '+it.tipografiaAdicional+'\n';
+        msg += it.tipografiaAdicional ? ('Tipografía: '+it.tipografiaAdicional+'\n') : 'Tipografía por definir\n';
       }
-      if(it.dijes) msg += 'Dijes: '+it.dijes+'\n';
+      if(it.dijes) msg += '✅Dijes: '+it.dijes+'\n';
     }
     if(it.notas) msg += 'Notas: '+it.notas+'\n';
     msg += '\n';
@@ -1126,17 +1182,18 @@ function generarMensajeCotizacion(){
   const tasa = parseFloat(document.getElementById('cot-tasa').value) || 0;
   const abonar = parseFloat(document.getElementById('cot-abonar').value) || (total*0.5);
   const abonarBs = abonar*tasa;
+  const pct = total > 0 ? Math.round((abonar/total)*100) : 50;
   const fecha = document.getElementById('cot-fecha').value || hoyISO();
 
   msg += 'Total: $'+fmtDolar(total)+'\n';
-  msg += 'Monto a Abonar para agendar 50%:\n';
+  msg += 'Monto a Abonar para agendar '+pct+'%:\n';
   msg += '$'+abonar.toFixed(2)+'\n';
   msg += 'Bs. '+fmtBs(abonarBs)+'\n\n';
   msg += PAGO_INFO.metodo+'\n'+PAGO_INFO.banco+'\nC.I '+PAGO_INFO.ci+'\n'+PAGO_INFO.telefono+'\n\n';
   msg += 'Realizamos envios por:\n'+ENVIOS_EMPRESAS+'\n\n';
   msg += 'Fecha: '+fmtFecha(fecha)+'\n';
   msg += 'Tasa BCV: '+fmtDolar(tasa)+'\n\n';
-  msg += 'Monto en Bs. Valido por el dia de hoy';
+  msg += 'Monto en Bs. Valido hasta 5:00pm de hoy';
 
   document.getElementById('cot-mensaje').value = msg;
   document.getElementById('cot-mensaje-wrap').classList.remove('hidden');
@@ -1156,7 +1213,7 @@ function guardarCotizacion(){
   const abonarInput = parseFloat(document.getElementById('cot-abonar').value);
   const abonar = isNaN(abonarInput) ? (total*0.5) : abonarInput;
   const totalBsVal = parseFloat(document.getElementById('cot-total-bs').value);
-  db.collection('cotizaciones').add({
+  const data = {
     referencia: referencia,
     fecha: document.getElementById('cot-fecha').value || hoyISO(),
     tasaBcv: tasa,
@@ -1164,22 +1221,57 @@ function guardarCotizacion(){
     abonar: abonar,
     abonarBs: abonar*tasa,
     items: cotizacionItems,
-    total: total,
-    status: 'Cotizado',
-    creadoPor: currentUser.email,
-    creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-  }).then(function(){
-    cotizacionItems = [];
-    renderItemsCotizacion();
-    document.getElementById('cot-referencia').value = '';
-    document.getElementById('cot-fecha').value = hoyISO();
-    document.getElementById('cot-tasa').value = tasaBcvDia || '';
-    document.getElementById('cot-total-bs').value = '';
-    document.getElementById('cot-abonar').value = '';
-    document.getElementById('cot-mensaje-wrap').classList.add('hidden');
-    actualizarMontosCotizacion();
-    alert('Cotización guardada.');
-  });
+    total: total
+  };
+  const editandoId = cotizacionEditandoId;
+  let promesa;
+  if(editandoId){
+    promesa = db.collection('cotizaciones').doc(editandoId).update(data);
+  } else {
+    data.status = 'Cotizado';
+    data.creadoPor = currentUser.email;
+    data.creadoEn = firebase.firestore.FieldValue.serverTimestamp();
+    promesa = db.collection('cotizaciones').add(data);
+  }
+  promesa.then(function(){
+    cancelarEdicionCotizacion();
+    alert(editandoId ? 'Cotización actualizada.' : 'Cotización guardada.');
+  }).catch(function(err){ alert('Error guardando la cotización: '+err.message); });
+}
+/* Carga una cotización ya guardada en el formulario "Nueva cotización" para
+   poder corregirla; guardarCotizacion() actualiza el mismo documento en vez
+   de crear uno nuevo mientras esté activa esta edición. */
+function editarCotizacionPendiente(id){
+  const c = cotizacionesCache.find(function(x){ return x.id === id; });
+  if(!c) return;
+  cotizacionEditandoId = id;
+  cotizacionItems = (c.items || []).slice();
+  renderItemsCotizacion();
+  document.getElementById('cot-referencia').value = c.referencia || '';
+  document.getElementById('cot-fecha').value = c.fecha || hoyISO();
+  document.getElementById('cot-tasa').value = c.tasaBcv || '';
+  document.getElementById('cot-total-bs').value = (c.totalBs !== undefined && c.totalBs !== null) ? c.totalBs : '';
+  abonarManual = true;
+  document.getElementById('cot-abonar').value = (c.abonar !== undefined && c.abonar !== null) ? c.abonar : '';
+  document.getElementById('cot-mensaje-wrap').classList.add('hidden');
+  actualizarMontosCotizacion();
+  document.getElementById('cot-guardar-btn').textContent = '✓ Guardar cambios';
+  document.getElementById('cot-cancelar-edicion').classList.remove('hidden');
+}
+function cancelarEdicionCotizacion(){
+  cotizacionEditandoId = null;
+  abonarManual = false;
+  cotizacionItems = [];
+  renderItemsCotizacion();
+  document.getElementById('cot-referencia').value = '';
+  document.getElementById('cot-fecha').value = hoyISO();
+  document.getElementById('cot-tasa').value = tasaBcvDia || '';
+  document.getElementById('cot-total-bs').value = '';
+  document.getElementById('cot-abonar').value = '';
+  document.getElementById('cot-mensaje-wrap').classList.add('hidden');
+  document.getElementById('cot-guardar-btn').textContent = '✓ Guardar cotización';
+  document.getElementById('cot-cancelar-edicion').classList.add('hidden');
+  actualizarMontosCotizacion();
 }
 
 let cotizacionesCache = [];
@@ -1205,6 +1297,7 @@ function renderCotizacionesPendientes(){
       '<div class="meta" style="color:var(--muted);font-size:.78rem;margin-top:4px;line-height:1.5">'+resumenProd+'</div>'+
       '<div class="total-line" style="font-size:.9rem;margin-top:6px"><span>Total</span><span>$'+Number(c.total).toFixed(2)+'</span></div>'+
       '<button class="btn full small" style="margin-top:8px" onclick="convertirEnVenta(\''+c.id+'\')">Convertir en venta →</button>'+
+      '<button class="btn secondary full small" style="margin-top:6px" onclick="editarCotizacionPendiente(\''+c.id+'\')">✏️ Editar</button>'+
       '</div>';
   }).join('');
 }
@@ -1227,6 +1320,21 @@ function borrarTodasCotizaciones(){
     alert('Listo, se borraron las cotizaciones pendientes.');
   }).catch(function(err){
     alert('Error borrando las cotizaciones: '+err.message);
+  });
+}
+function borrarTodasVentas(){
+  if(todasLasVentas.length === 0){ alert('No hay ventas registradas para borrar.'); return; }
+  const cantidad = todasLasVentas.length;
+  if(!confirm('¿Seguro que querés borrar las '+cantidad+' ventas registradas? Esta acción no se puede deshacer y no hay forma de recuperarlas después.')) return;
+  if(!confirm('Confirmá de nuevo: se van a borrar TODAS las ventas (clientes, abonos, fotos, todo). ¿Continuar?')) return;
+  const batch = db.batch();
+  todasLasVentas.forEach(function(v){
+    batch.delete(db.collection('ventas').doc(v.id));
+  });
+  batch.commit().then(function(){
+    alert('Listo, se borraron todas las ventas registradas.');
+  }).catch(function(err){
+    alert('Error borrando las ventas: '+err.message);
   });
 }
 
@@ -1255,10 +1363,8 @@ function renderVentasLista(){
   el.innerHTML = todasLasVentas.map(function(v){
     const saldo = calcularSaldo(v);
     const resumenProd = (v.items||[]).map(function(it){
-      const esGrabado = it.tipo === 'grabado';
-      const colorTipo = esGrabado ? 'var(--info)' : '#ff9800';
-      const etiquetaTipo = (esGrabado ? 'Grabado' : 'Personalizado')+' ('+it.cantidad+')';
-      return '<b style="color:'+colorTipo+'">'+etiquetaTipo+'</b><br>'+camposConEtiquetaLineas(it);
+      const etiquetaTipo = tipoPiezaTexto(it.tipo)+' ('+it.cantidad+')';
+      return '<b style="color:'+tipoPiezaColor(it.tipo)+'">'+etiquetaTipo+'</b><br>'+camposConEtiquetaLineas(it);
     }).join('<br>');
     return '<div class="card venta-card" onclick="abrirFormVenta(\''+v.id+'\')">'+
       '<div class="top-line"><span class="cliente-nombre">'+escapeHtml(v.nombre||'(sin nombre)')+'</span>'+
@@ -1388,9 +1494,10 @@ function actualizarBloqueoVenta(){
   document.getElementById('v-bloqueo-aviso').classList.toggle('hidden', !bloqueada);
   [
     'v-nombre','v-id','v-celular','v-empresa-envio','v-direccion-envio',
-    'v-item-cadena','v-item-tipo-personalizado','v-item-tipo-grabado',
+    'v-item-cadena','v-item-tipo-personalizado','v-item-tipo-grabado','v-item-tipo-bisuteria',
     'v-item-nombre','v-item-nombre-adic','v-item-dijes',
     'v-item-tipo-medalla','v-item-cara-frontal','v-item-cara-posterior',
+    'v-item-bisuteria-tipo',
     'v-item-cantidad','v-item-precio','v-item-notas','v-btn-agregar-pieza',
     'v-total-bs','v-fecha-venta','v-fecha-entrega','v-fecha-envio',
     'ab-fecha','ab-tasa','ab-monto','v-btn-agregar-abono',
@@ -1403,7 +1510,7 @@ function actualizarBloqueoVenta(){
 }
 
 function limpiarCamposPiezaVenta(){
-  ['v-item-cadena','v-item-nombre','v-item-nombre-adic','v-item-dijes','v-item-tipo-medalla','v-item-cara-frontal','v-item-cara-posterior','v-item-notas'].forEach(function(id){
+  ['v-item-cadena','v-item-nombre','v-item-nombre-adic','v-item-dijes','v-item-tipo-medalla','v-item-cara-frontal','v-item-cara-posterior','v-item-bisuteria-tipo','v-item-notas'].forEach(function(id){
     document.getElementById(id).value = '';
   });
   document.getElementById('v-item-cantidad').value = 1;
@@ -1422,6 +1529,7 @@ function agregarItemVenta(){
     cadena: document.getElementById('v-item-cadena').value.trim(),
     nombre:'', nombreAdicional:'', dijes:'', tipografiaNombre:'', tipografiaAdicional:'',
     tipoMedalla:'', caraFrontal:'', caraPosterior:'', tipografiaFrontal:'', tipografiaPosterior:'',
+    tipoBisuteria:'',
     notas: document.getElementById('v-item-notas').value.trim(),
     cantidad: parseInt(document.getElementById('v-item-cantidad').value) || 1,
     precio: parseFloat(document.getElementById('v-item-precio').value) || 0
@@ -1433,6 +1541,8 @@ function agregarItemVenta(){
     item.dijes = document.getElementById('v-item-dijes').value.trim();
     item.tipografiaNombre = fuentesSel.vNombre || '';
     item.tipografiaAdicional = fuentesSel.vAdic || '';
+  } else if(tipo === 'bisuteria'){
+    item.tipoBisuteria = document.getElementById('v-item-bisuteria-tipo').value.trim();
   } else {
     item.tipoMedalla = document.getElementById('v-item-tipo-medalla').value.trim();
     item.caraFrontal = document.getElementById('v-item-cara-frontal').value.trim();
@@ -1672,7 +1782,7 @@ function verResumenVenta(){
   txt += 'Pieza(s):\n';
   ventaItems.forEach(function(it, idx){
     txt += '  Pieza '+(idx+1)+':\n';
-    txt += '    '+(it.tipo==='grabado'?'Grabado':'Personalizado')+'\n';
+    txt += '    '+tipoPiezaTexto(it.tipo)+'\n';
     if(it.cadena) txt += '    Pieza: '+it.cadena+'\n';
     if(it.tipo === 'grabado'){
       if(it.tipoMedalla) txt += '    Tipo: '+it.tipoMedalla+'\n';
@@ -1680,6 +1790,8 @@ function verResumenVenta(){
       if(it.tipografiaFrontal) txt += '    Tipografía: '+it.tipografiaFrontal+'\n';
       if(it.caraPosterior) txt += '    Cara Posterior: '+it.caraPosterior+'\n';
       if(it.tipografiaPosterior) txt += '    Tipografía: '+it.tipografiaPosterior+'\n';
+    } else if(it.tipo === 'bisuteria'){
+      if(it.tipoBisuteria) txt += '    Tipo: '+it.tipoBisuteria+'\n';
     } else {
       txt += '    Nombre: '+it.nombre+'\n';
       if(it.tipografiaNombre) txt += '    Tipografía: '+it.tipografiaNombre+'\n';
@@ -1741,10 +1853,8 @@ function aplicarFiltrosReporte(){
   tbody.innerHTML = filtradas.map(function(v){
     const saldo = calcularSaldo(v);
     const resumenProd = (v.items||[]).map(function(it){
-      const esGrabado = it.tipo === 'grabado';
-      const colorTipo = esGrabado ? 'var(--info)' : '#ff9800';
-      const etiquetaTipo = (esGrabado ? 'Grabado' : 'Personalizado')+' ('+it.cantidad+')';
-      return '<b style="color:'+colorTipo+'">'+etiquetaTipo+'</b><br>'+camposConEtiquetaLineas(it);
+      const etiquetaTipo = tipoPiezaTexto(it.tipo)+' ('+it.cantidad+')';
+      return '<b style="color:'+tipoPiezaColor(it.tipo)+'">'+etiquetaTipo+'</b><br>'+camposConEtiquetaLineas(it);
     }).join('<br>');
     return '<tr><td><span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></td>'+
       '<td>'+escapeHtml(v.nombre||'-')+'</td>'+
