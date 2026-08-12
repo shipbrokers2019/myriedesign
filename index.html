@@ -1820,11 +1820,11 @@ function verResumenVenta(){
     } else if(it.tipo === 'bisuteria'){
       if(it.tipoBisuteria) txt += '    Tipo: '+it.tipoBisuteria+'\n';
     } else {
-      txt += '    Nombre: ✅'+it.nombre+'\n';
+      txt += '    Nombre:\n    ✅'+it.nombre+'\n';
       if(it.tipografiaNombre) txt += '    Tipografía: '+it.tipografiaNombre+'\n';
-      if(it.nombreAdicional) txt += '    Nombre adicional: ✅'+it.nombreAdicional+'\n';
+      if(it.nombreAdicional) txt += '    Nombre adicional:\n    ✅'+it.nombreAdicional+'\n';
       if(it.tipografiaAdicional) txt += '    Tipografía: '+it.tipografiaAdicional+'\n';
-      if(it.dijes) txt += '    ✅Dijes: '+it.dijes+'\n';
+      if(it.dijes) txt += '    Dijes:\n    ✅'+it.dijes+'\n';
     }
     if(it.notas) txt += '    Notas: '+it.notas+'\n';
     txt += '    Cantidad: '+it.cantidad+' — Precio $'+it.precio.toFixed(2)+' c/u — Subtotal $'+(it.precio*it.cantidad).toFixed(2)+'\n';
