@@ -417,7 +417,11 @@
     <div class="card">
       <h2>Ventas registradas</h2>
       <div id="ventas-list"><div class="empty-state">Cargando...</div></div>
-      <button class="btn danger full" style="margin-top:10px" onclick="borrarTodasVentas()">🗑 Borrar todas las ventas registradas</button>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <div style="flex:1"><label>Desde</label><input type="date" id="ventas-borrar-desde"></div>
+        <div style="flex:1"><label>Hasta</label><input type="date" id="ventas-borrar-hasta"></div>
+      </div>
+      <button class="btn danger full" style="margin-top:6px" onclick="borrarVentasPorPeriodo()">🗑 Borrar ventas por período</button>
     </div>
   </div>
 
@@ -1322,9 +1326,10 @@ function borrarTodasCotizaciones(){
     alert('Error borrando las cotizaciones: '+err.message);
   });
 }
-function descargarRespaldoVentasCSV(){
+function descargarRespaldoVentasCSV(lista){
+  const ventas = lista || todasLasVentas;
   let csv = 'ID,Status,Cliente,Cedula,Celular,Empresa Envio,Direccion Envio,Fecha Venta,Fecha Entrega,Fecha Envio,Productos,Total USD,Total Bs,Abonos,Saldo Pendiente\n';
-  todasLasVentas.forEach(function(v){
+  ventas.forEach(function(v){
     const saldo = calcularSaldo(v);
     const resumenProd = (v.items||[]).map(function(it){
       return tipoPiezaTexto(it.tipo)+' x'+(it.cantidad||1)+' ($'+Number(it.precio||0).toFixed(2)+'): '+camposConEtiqueta(it);
@@ -1348,18 +1353,25 @@ function descargarRespaldoVentasCSV(){
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
-function borrarTodasVentas(){
-  if(todasLasVentas.length === 0){ alert('No hay ventas registradas para borrar.'); return; }
-  const cantidad = todasLasVentas.length;
-  if(!confirm('¿Seguro que querés borrar las '+cantidad+' ventas registradas? Antes de borrar se va a descargar un CSV de respaldo con todos los datos (no incluye las fotos). Esta acción no se puede deshacer en Firebase.')) return;
-  if(!confirm('Confirmá de nuevo: se van a borrar TODAS las ventas (clientes, abonos, fotos, todo). ¿Continuar?')) return;
-  descargarRespaldoVentasCSV();
+function borrarVentasPorPeriodo(){
+  const desde = document.getElementById('ventas-borrar-desde').value;
+  const hasta = document.getElementById('ventas-borrar-hasta').value;
+  if(!desde || !hasta){ alert('Seleccioná fecha desde y hasta.'); return; }
+  if(desde > hasta){ alert('La fecha "desde" no puede ser mayor que "hasta".'); return; }
+  const ventasFiltradas = todasLasVentas.filter(function(v){
+    return v.fechaVenta && v.fechaVenta >= desde && v.fechaVenta <= hasta;
+  });
+  if(ventasFiltradas.length === 0){ alert('No hay ventas registradas en ese período.'); return; }
+  const cantidad = ventasFiltradas.length;
+  if(!confirm('¿Seguro que querés borrar las '+cantidad+' ventas del período '+fmtFecha(desde)+' al '+fmtFecha(hasta)+'? Antes de borrar se va a descargar un CSV de respaldo con esas ventas (no incluye las fotos). Esta acción no se puede deshacer en Firebase.')) return;
+  if(!confirm('Confirmá de nuevo: se van a borrar '+cantidad+' ventas (clientes, abonos, fotos, todo) de ese período. ¿Continuar?')) return;
+  descargarRespaldoVentasCSV(ventasFiltradas);
   const batch = db.batch();
-  todasLasVentas.forEach(function(v){
+  ventasFiltradas.forEach(function(v){
     batch.delete(db.collection('ventas').doc(v.id));
   });
   batch.commit().then(function(){
-    alert('Listo. Se descargó un CSV de respaldo (revisá tus descargas) y se borraron todas las ventas registradas.');
+    alert('Listo. Se descargó un CSV de respaldo (revisá tus descargas) y se borraron '+cantidad+' ventas del período seleccionado.');
   }).catch(function(err){
     alert('Error borrando las ventas: '+err.message);
   });
