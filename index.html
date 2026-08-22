@@ -1062,7 +1062,7 @@ function agregarItemCotizacion(){
     item.nombreAdicional = document.getElementById('cot-nombre-adic').value.trim();
     item.dijes = document.getElementById('cot-dijes').value.trim();
     item.tipografiaNombre = fuentesSel.cotNombre || '';
-    item.tipografiaAdicional = fuentesSel.cotAdic || '';
+    item.tipografiaAdicional = item.nombreAdicional ? (fuentesSel.cotAdic || '') : '';
   } else if(tipo === 'bisuteria'){
     item.tipoBisuteria = document.getElementById('cot-bisuteria-tipo').value.trim();
   } else {
@@ -1579,7 +1579,7 @@ function agregarItemVenta(){
     item.nombreAdicional = document.getElementById('v-item-nombre-adic').value.trim();
     item.dijes = document.getElementById('v-item-dijes').value.trim();
     item.tipografiaNombre = fuentesSel.vNombre || '';
-    item.tipografiaAdicional = fuentesSel.vAdic || '';
+    item.tipografiaAdicional = item.nombreAdicional ? (fuentesSel.vAdic || '') : '';
   } else if(tipo === 'bisuteria'){
     item.tipoBisuteria = document.getElementById('v-item-bisuteria-tipo').value.trim();
   } else {
@@ -1832,8 +1832,10 @@ function verResumenVenta(){
     } else {
       txt += '    Nombre:\n    ✅'+it.nombre+'\n';
       if(it.tipografiaNombre) txt += '    Tipografía: '+it.tipografiaNombre+'\n';
-      if(it.nombreAdicional) txt += '    Nombre adicional:\n    ✅'+it.nombreAdicional+'\n';
-      if(it.tipografiaAdicional) txt += '    Tipografía: '+it.tipografiaAdicional+'\n';
+      if(it.nombreAdicional){
+        txt += '    Nombre adicional:\n    ✅'+it.nombreAdicional+'\n';
+        if(it.tipografiaAdicional) txt += '    Tipografía: '+it.tipografiaAdicional+'\n';
+      }
       if(it.dijes) txt += '    Dijes:\n    ✅'+it.dijes+'\n';
     }
     if(it.notas) txt += '    Notas: '+it.notas+'\n';
