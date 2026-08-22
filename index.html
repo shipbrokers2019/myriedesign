@@ -1839,7 +1839,7 @@ function verResumenVenta(){
       if(it.dijes) txt += '    Dijes:\n    ✅'+it.dijes+'\n';
     }
     if(it.notas) txt += '    Notas: '+it.notas+'\n';
-    txt += '    Precio $'+Math.round(it.precio)+' c/u — Subtotal $'+Math.round(it.precio*it.cantidad)+'\n';
+    txt += '    Precio $'+Math.round(it.precio)+' c/u\n';
   });
   txt += '\nTotal: $'+Math.round(total)+'\n';
   txt += '\nAbonos:\n';
