@@ -1812,9 +1812,7 @@ function verResumenVenta(){
   const abonado = ventaAbonos.reduce(function(s,a){ return s + Number(a.monto); }, 0);
   const saldo = total - abonado;
 
-  let txt = 'RESUMEN DE VENTA - Myriedesign\n';
-  txt += '================================\n';
-  txt += 'Cliente: '+nombre+'\n';
+  let txt = 'Cliente: '+nombre+'\n';
   txt += 'Cédula/ID: '+cedula+'\n';
   txt += 'Celular: '+celular+'\n';
   txt += 'Fecha de venta: '+fmtFecha(fechaVenta)+'\n\n';
@@ -1839,19 +1837,19 @@ function verResumenVenta(){
       if(it.dijes) txt += '    Dijes:\n    ✅'+it.dijes+'\n';
     }
     if(it.notas) txt += '    Notas: '+it.notas+'\n';
-    txt += '    Cantidad: '+it.cantidad+' — Precio $'+it.precio.toFixed(2)+' c/u — Subtotal $'+(it.precio*it.cantidad).toFixed(2)+'\n';
+    txt += '    Precio $'+Math.round(it.precio)+' c/u — Subtotal $'+Math.round(it.precio*it.cantidad)+'\n';
   });
-  txt += '\nTotal: $'+total.toFixed(2)+'\n';
+  txt += '\nTotal: $'+Math.round(total)+'\n';
   txt += '\nAbonos:\n';
   if(ventaAbonos.length === 0){ txt += '  (sin abonos registrados)\n'; }
   ventaAbonos.forEach(function(a){
-    txt += '  '+fmtFecha(a.fecha)+' - '+Number(a.monto).toFixed(2)+'$\n';
+    txt += '  '+fmtFecha(a.fecha)+' - $'+Math.round(Number(a.monto))+'\n';
     if(a.tasaBcv){
       txt += '  (Bs. '+Number(a.montoBs||0).toFixed(2)+' / tasa '+Number(a.tasaBcv).toFixed(2)+')\n';
     }
   });
-  txt += '\nTotal abonado: $'+abonado.toFixed(2)+'\n';
-  txt += 'Saldo pendiente: $'+saldo.toFixed(2)+'\n\n';
+  txt += '\nTotal abonado: $'+Math.round(abonado)+'\n';
+  txt += 'Saldo pendiente: $'+Math.round(saldo)+'\n\n';
   txt += 'Status: '+status+'\n';
   txt += 'Fecha aproximada de entrega: '+fmtFecha(fechaEntrega)+'\n';
   if(empresaEnvio || direccionEnvio) txt += '\n';
