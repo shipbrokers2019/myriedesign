@@ -487,10 +487,58 @@
     </div>
   </div>
 
+  <!-- ---------- TAB: NOMBRES/DIJES ---------- -->
+  <div id="tab-nombresdijes" class="tab-content hidden">
+    <div class="card">
+      <h2>Filtros</h2>
+      <div class="filter-block">
+        <div>
+          <label>Status</label>
+          <select id="nd-status">
+            <option value="Fabricacion">Fabricación</option>
+            <option value="Aprobado">Aprobado</option>
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div>
+          <label>Tipo de pieza</label>
+          <select id="nd-tipo">
+            <option value="personalizado">Personalizado</option>
+            <option value="grabado">Grabado</option>
+          </select>
+        </div>
+        <div>
+          <label>Venta desde</label>
+          <input type="date" id="nd-venta-desde">
+        </div>
+        <div>
+          <label>Venta hasta</label>
+          <input type="date" id="nd-venta-hasta">
+        </div>
+      </div>
+      <button class="btn full" style="margin-top:12px" onclick="aplicarFiltrosNombresDijes()">Aplicar filtros</button>
+      <button class="btn secondary full" style="margin-top:8px" onclick="limpiarFiltrosNombresDijes()">Limpiar filtros</button>
+    </div>
+    <div class="card">
+      <div class="top-line" style="display:flex;justify-content:space-between;align-items:center">
+        <h2 style="margin:0">Resultado</h2>
+        <button class="btn secondary small" onclick="exportarPDFNombresDijes()">⬇ PDF</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="nd-table">
+          <thead><tr><th>Cliente</th><th>Producto</th><th>Nombres/Dijes</th></tr></thead>
+          <tbody id="nd-tbody"></tbody>
+        </table>
+      </div>
+      <div id="nd-empty" class="empty-state hidden">Sin resultados con estos filtros.</div>
+    </div>
+  </div>
+
   <nav class="tabs">
     <button id="navbtn-cotizar" class="active" onclick="mostrarTab('cotizar')"><span class="ic">🧾</span>Cotizar</button>
     <button id="navbtn-ventas" onclick="mostrarTab('ventas')"><span class="ic">💰</span>Ventas</button>
     <button id="navbtn-reportes" onclick="mostrarTab('reportes')"><span class="ic">📊</span>Reportes</button>
+    <button id="navbtn-nombresdijes" onclick="mostrarTab('nombresdijes')"><span class="ic">🏷️</span>Nombres/Dijes</button>
   </nav>
 </div>
 
@@ -949,15 +997,17 @@ function doLogout(){ auth.signOut(); }
 
 /* -------------------- 4) NAVEGACIÓN DE PESTAÑAS -------------------- */
 function mostrarTab(nombre){
-  ['cotizar','ventas','reportes'].forEach(function(t){
+  ['cotizar','ventas','reportes','nombresdijes'].forEach(function(t){
     document.getElementById('tab-'+t).classList.toggle('hidden', t !== nombre);
     document.getElementById('navbtn-'+t).classList.toggle('active', t === nombre);
   });
   const mostrarResumen = (nombre === 'ventas' || nombre === 'reportes');
-  document.getElementById('tasa-bcv-card').classList.toggle('hidden', mostrarResumen);
+  const ocultarAmbas = (nombre === 'nombresdijes');
+  document.getElementById('tasa-bcv-card').classList.toggle('hidden', mostrarResumen || ocultarAmbas);
   document.getElementById('ventas-resumen-card').classList.toggle('hidden', !mostrarResumen);
   if(mostrarResumen){ actualizarResumenVentas(); }
   if(nombre === 'reportes'){ aplicarFiltrosReporte(); }
+  if(nombre === 'nombresdijes'){ aplicarFiltrosNombresDijes(); }
 }
 /* Suma el total y el saldo pendiente de todas las ventas, para el resumen
    que se muestra arriba de "Ventas registradas" en vez de la Tasa BCV. */
@@ -1924,6 +1974,121 @@ function exportarCSVReporte(){
   const a = document.createElement('a');
   a.href = url; a.download = 'reporte_myriedesign_'+hoyISO()+'.csv';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+/* -------------------- 12b) NOMBRES/DIJES -------------------- */
+/* Texto del producto igual al formato del mensaje de WhatsApp (con ✅), sin precio. */
+function productoTextoHtml(it){
+  const partes = [];
+  partes.push('<b style="color:'+tipoPiezaColor(it.tipo)+'">'+tipoPiezaTexto(it.tipo)+'</b>');
+  if(it.cadena) partes.push('Pieza: '+escapeHtml(it.cadena));
+  if(it.tipo === 'grabado'){
+    if(it.tipoMedalla) partes.push('Tipo: '+escapeHtml(it.tipoMedalla));
+    if(it.caraFrontal) partes.push('Cara Frontal: '+escapeHtml(it.caraFrontal));
+    if(it.tipografiaFrontal) partes.push('Tipografía: '+escapeHtml(it.tipografiaFrontal));
+    if(it.caraPosterior) partes.push('Cara Posterior: '+escapeHtml(it.caraPosterior));
+    if(it.tipografiaPosterior) partes.push('Tipografía: '+escapeHtml(it.tipografiaPosterior));
+  } else if(it.tipo === 'bisuteria'){
+    if(it.tipoBisuteria) partes.push('Tipo: '+escapeHtml(it.tipoBisuteria));
+  } else {
+    if(it.nombre) partes.push('Nombre:<br>✅'+escapeHtml(it.nombre));
+    if(it.tipografiaNombre) partes.push('Tipografía: '+escapeHtml(it.tipografiaNombre));
+    if(it.nombreAdicional){
+      partes.push('Nombre adicional:<br>✅'+escapeHtml(it.nombreAdicional));
+      if(it.tipografiaAdicional) partes.push('Tipografía: '+escapeHtml(it.tipografiaAdicional));
+    }
+    if(it.dijes) partes.push('Dijes:<br>✅'+escapeHtml(it.dijes));
+  }
+  if(it.notas) partes.push('Notas: '+escapeHtml(it.notas));
+  return partes.join('<br>');
+}
+function productoTextoPlano(it){
+  return productoTextoHtml(it).replace(/<br>/g,'\n').replace(/<[^>]+>/g,'');
+}
+/* Solo los nombres y dijes mencionados (sin tipografías ni precios). */
+function nombresDijesDeItem(it){
+  if(it.tipo === 'grabado' || it.tipo === 'bisuteria') return [];
+  const lista = [];
+  if(it.nombre) lista.push(it.nombre);
+  if(it.nombreAdicional) lista.push(it.nombreAdicional);
+  if(it.dijes) lista.push(it.dijes);
+  return lista;
+}
+function aplicarFiltrosNombresDijes(){
+  const status = document.getElementById('nd-status').value;
+  const tipo = document.getElementById('nd-tipo').value;
+  const ventaDesde = document.getElementById('nd-venta-desde').value;
+  const ventaHasta = document.getElementById('nd-venta-hasta').value;
+
+  const filtradas = todasLasVentas.filter(function(v){
+    if(status && v.status !== status) return false;
+    if(ventaDesde && (v.fechaVenta||'') < ventaDesde) return false;
+    if(ventaHasta && (v.fechaVenta||'') > ventaHasta) return false;
+    if(!(v.items||[]).some(function(it){ return (it.tipo||'personalizado') === tipo; })) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('nd-tbody');
+  document.getElementById('nd-empty').classList.toggle('hidden', filtradas.length > 0);
+  tbody.innerHTML = filtradas.map(function(v){
+    const items = (v.items||[]).filter(function(it){ return (it.tipo||'personalizado') === tipo; });
+    const producto = items.map(productoTextoHtml).join('<br><br>');
+    const nombresDijes = items.reduce(function(acc,it){ return acc.concat(nombresDijesDeItem(it)); }, []);
+    const listado = nombresDijes.length ? nombresDijes.map(function(n){ return escapeHtml(n); }).join('<br>') : '-';
+    return '<tr><td>'+escapeHtml(v.nombre||'-')+'</td>'+
+      '<td style="line-height:1.5">'+producto+'</td>'+
+      '<td style="line-height:1.5">'+listado+'</td></tr>';
+  }).join('');
+  window._nombresDijesFiltrado = filtradas.map(function(v){
+    return Object.assign({}, v, { items: (v.items||[]).filter(function(it){ return (it.tipo||'personalizado') === tipo; }) });
+  });
+}
+function limpiarFiltrosNombresDijes(){
+  document.getElementById('nd-status').value = 'Fabricacion';
+  document.getElementById('nd-tipo').value = 'personalizado';
+  document.getElementById('nd-venta-desde').value = '';
+  document.getElementById('nd-venta-hasta').value = '';
+  aplicarFiltrosNombresDijes();
+}
+/* Filas del PDF: una por cada nombre/nombre adicional del ítem, con su tipografía y los dijes de la pieza. */
+function filasPDFNombresDijes(filas){
+  const out = [];
+  filas.forEach(function(v){
+    (v.items||[]).forEach(function(it){
+      if(it.nombre) out.push({ cliente:v.nombre||'-', nombre:it.nombre, tipografia:it.tipografiaNombre||'-', dijes:it.dijes||'-' });
+      if(it.nombreAdicional) out.push({ cliente:v.nombre||'-', nombre:it.nombreAdicional, tipografia:it.tipografiaAdicional||'-', dijes:it.dijes||'-' });
+    });
+  });
+  return out;
+}
+function exportarPDFNombresDijes(){
+  const filas = window._nombresDijesFiltrado || [];
+  const filasPdf = filasPDFNombresDijes(filas);
+  const ventaDesde = document.getElementById('nd-venta-desde').value;
+  const ventaHasta = document.getElementById('nd-venta-hasta').value;
+  const rango = (ventaDesde||ventaHasta) ? ('Del '+(ventaDesde?fmtFecha(ventaDesde):'...')+' al '+(ventaHasta?fmtFecha(ventaHasta):'...')) : 'Todas las fechas';
+
+  const filasHtml = filasPdf.length ? filasPdf.map(function(f){
+    return '<tr><td>'+escapeHtml(f.cliente)+'</td><td>'+escapeHtml(f.nombre)+'</td><td>'+escapeHtml(f.tipografia)+'</td><td>'+escapeHtml(f.dijes)+'</td></tr>';
+  }).join('') : '<tr><td colspan="4" style="text-align:center">Sin resultados</td></tr>';
+
+  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Nombres/Dijes fabricación</title><style>'+
+    'body{font-family:Arial,sans-serif;padding:24px;color:#111}'+
+    'h1{font-size:18px;margin-bottom:2px}'+
+    '.meta{color:#555;font-size:12px;margin-bottom:16px}'+
+    'table{width:100%;border-collapse:collapse;font-size:13px}'+
+    'th,td{border:1px solid #999;padding:6px 8px;text-align:left}'+
+    'th{background:#eee}'+
+    '</style></head><body>'+
+    '<h1>Myriedesign — Nombres/Dijes en fabricación</h1>'+
+    '<div class="meta">'+rango+' · Generado el '+fmtFecha(hoyISO())+'</div>'+
+    '<table><thead><tr><th>Cliente</th><th>Nombre</th><th>Estilo de caligrafía</th><th>Dijes</th></tr></thead>'+
+    '<tbody>'+filasHtml+'</tbody></table>'+
+    '<script>window.onload=function(){window.print();}<\/script>'+
+    '</body></html>';
+
+  const w = window.open('', '_blank');
+  w.document.open(); w.document.write(html); w.document.close();
 }
 
 /* -------------------- 13) UTILIDADES -------------------- */
