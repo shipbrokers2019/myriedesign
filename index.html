@@ -761,6 +761,13 @@ function pintarTasaBcvCache(){
       if(metaEl && cache.fecha){
         metaEl.textContent = 'Actualizada el '+fmtFecha(cache.fecha)+(cache.actualizadoPor ? ' por '+cache.actualizadoPor : '');
       }
+      const cotTasa = document.getElementById('cot-tasa');
+      if(cotTasa && !cotTasa.value){
+        cotTasa.value = tasaBcvDia;
+        actualizarMontosCotizacion();
+      }
+      const abTasa = document.getElementById('ab-tasa');
+      if(abTasa && !abTasa.value){ abTasa.value = tasaBcvDia; }
     }
   }catch(e){}
 }
