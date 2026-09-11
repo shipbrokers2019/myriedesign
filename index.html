@@ -1366,6 +1366,10 @@ function cargarCotizacionesPendientes(){
       return tb - ta;
     });
     renderCotizacionesPendientes();
+  }, function(err){
+    console.error('No se pudieron cargar las cotizaciones pendientes:', err);
+    const el = document.getElementById('cotizaciones-pendientes-list');
+    if(el) el.innerHTML = '<div class="empty-state">Error cargando cotizaciones: '+escapeHtml(err.message||String(err))+'</div>';
   });
 }
 function renderCotizacionesPendientes(){
