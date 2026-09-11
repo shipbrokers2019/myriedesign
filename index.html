@@ -724,6 +724,11 @@ function initFirebase(){
   firebase.initializeApp(firebaseConfig);
   auth = firebase.auth();
   db = firebase.firestore();
+  // Persistencia offline: si al abrir la app no hay señal (o Firestore tarda),
+  // usa el último dato guardado en el celular en vez de mostrar todo en cero.
+  db.enablePersistence({synchronizeTabs:true}).catch(function(err){
+    console.warn('Persistencia offline no disponible:', err.code);
+  });
   firebaseReady = true;
 
   auth.onAuthStateChanged(function(user){
@@ -748,11 +753,27 @@ function initFirebase(){
    Se autocompleta en Cotizador (cot-tasa) y Abonos (ab-tasa) solo cuando esos
    campos están vacíos, así no pisa una tasa distinta que alguien ya haya puesto
    a mano para un caso puntual. */
+/* Pinta al toque el último valor conocido (guardado en este celular) mientras
+   Firestore responde, para que la Tasa BCV nunca se vea en 0 al abrir la app. */
+function pintarTasaBcvCache(){
+  try{
+    const cache = JSON.parse(localStorage.getItem('myriedesign_tasaBcv') || 'null');
+    if(cache && cache.valor){
+      tasaBcvDia = Number(cache.valor) || 0;
+      const inputGlobal = document.getElementById('tasa-bcv-global');
+      if(inputGlobal && !inputGlobal.value) inputGlobal.value = tasaBcvDia;
+    }
+  }catch(e){}
+}
 function cargarTasaBcvDia(){
   if(!db) return;
+  pintarTasaBcvCache();
   db.collection('config').doc('tasaBcv').onSnapshot(function(doc){
     const data = doc.data() || {};
     tasaBcvDia = Number(data.valor) || 0;
+    if(tasaBcvDia){
+      try{ localStorage.setItem('myriedesign_tasaBcv', JSON.stringify({valor:tasaBcvDia, fecha:data.fecha||''})); }catch(e){}
+    }
     const inputGlobal = document.getElementById('tasa-bcv-global');
     if(inputGlobal && document.activeElement !== inputGlobal){
       inputGlobal.value = tasaBcvDia || '';
