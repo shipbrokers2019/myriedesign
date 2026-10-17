@@ -1158,6 +1158,29 @@ function camposArray(it){
     it.dijes ? ('Dijes: '+it.dijes) : ''
   ].filter(Boolean);
 }
+/* Resumen completo de una pieza, con la tipografía al lado de cada texto
+   (ej. "Nombre: Karley · Tempting"). Usado en las tarjetas de piezas de la venta. */
+function resumenPiezaLineas(it){
+  const conFuente = function(etiqueta, texto, fuente){
+    return texto ? '<b>'+etiqueta+':</b> '+escapeHtml(texto)+(fuente ? ' <span style="color:var(--gold)">· '+escapeHtml(fuente)+'</span>' : '') : '';
+  };
+  const simple = function(etiqueta, texto){ return texto ? '<b>'+etiqueta+':</b> '+escapeHtml(texto) : ''; };
+  let lineas;
+  if(it.tipo === 'grabado'){
+    lineas = [simple('Pieza', it.cadena), simple('Tipo', it.tipoMedalla),
+      conFuente('Cara frontal', it.caraFrontal, it.tipografiaFrontal),
+      conFuente('Cara posterior', it.caraPosterior, it.tipografiaPosterior)];
+  } else if(it.tipo === 'bisuteria'){
+    lineas = [simple('Pieza', it.cadena), simple('Tipo', it.tipoBisuteria)];
+  } else {
+    lineas = [simple('Pieza', it.cadena),
+      conFuente('Nombre', it.nombre, it.tipografiaNombre),
+      conFuente('Nombre adic.', it.nombreAdicional, it.tipografiaAdicional),
+      simple('Dijes', it.dijes)];
+  }
+  lineas.push(simple('Notas', it.notas));
+  return lineas.filter(Boolean).join('<br>');
+}
 function camposConEtiqueta(it){
   return camposArray(it).join(' · ');
 }
@@ -1789,7 +1812,7 @@ function renderItemsVenta(){
   const el = document.getElementById('v-items-list');
   el.innerHTML = ventaItems.length ? ventaItems.map(function(it, idx){
     const subtotal = it.precio*it.cantidad;
-    const campos = camposConEtiquetaLineas(it);
+    const campos = resumenPiezaLineas(it);
     return '<div class="item-row item-row-pieza" style="flex-direction:column;align-items:stretch">'+
       '<div style="display:flex;justify-content:space-between;font-weight:700">'+
         '<span style="color:'+tipoPiezaColor(it.tipo)+'">Pieza '+(idx+1)+' · '+tipoPiezaTexto(it.tipo)+'</span>'+
@@ -2359,7 +2382,7 @@ function abrirFichaHoy(tipo, id){
       lineaFicha('Cotizada', fmtFecha(c.fecha))+
       lineaFicha('Total', '$'+Number(c.total||0).toFixed(2))+
       lineaFicha('Seguimiento', fmtFecha(seg)+(c.seguimiento ? '' : ' <small>(automático)</small>'))+
-      '<div style="margin-top:8px;color:var(--muted)">'+(c.items||[]).map(camposConEtiquetaLineas).join('<br><br>')+'</div>'+
+      '<div style="margin-top:8px;color:var(--muted)">'+(c.items||[]).map(resumenPiezaLineas).join('<br><br>')+'</div>'+
       '</div>'+
       botonesContacto(numeroWhatsApp(c.referencia))+
       '<div class="section-title">¿Ya le escribiste?</div>'+
@@ -2388,7 +2411,7 @@ function abrirFichaHoy(tipo, id){
       lineaFicha('Total', '$'+Number(v.total||0).toFixed(2))+
       lineaFicha('Abonado', '<span class="saldo-zero">$'+abonado.toFixed(2)+'</span>')+
       lineaFicha('Saldo', '<span class="'+(saldo>0.004?'saldo-pos':'saldo-zero')+'">$'+saldo.toFixed(2)+'</span>')+
-      '<div style="margin-top:8px;color:var(--muted)">'+(v.items||[]).map(camposConEtiquetaLineas).join('<br><br>')+'</div>'+
+      '<div style="margin-top:8px;color:var(--muted)">'+(v.items||[]).map(resumenPiezaLineas).join('<br><br>')+'</div>'+
       '</div>'+
       botonesContacto(numeroWhatsApp(v.celular))+
       '<button class="btn full" style="margin-top:14px" onclick="cerrarFichaHoy();abrirFormVenta(\''+v.id+'\')">Abrir venta completa →</button>';
