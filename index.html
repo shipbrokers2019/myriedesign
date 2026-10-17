@@ -2198,6 +2198,14 @@ function diasEntre(desdeISO, hastaISO){
 function seguimientoCot(c){
   return c.seguimiento || sumarDias(c.fecha || hoyLocalISO(), 2);
 }
+// Cotizaciones sin seguimiento explícito con más de estos días ya no se persiguen en "Hoy"
+// (siguen en Cotizar). Evita que la lista se llene de cotizaciones viejas.
+const DIAS_MAX_SIN_SEGUIMIENTO = 14;
+function cotEnSeguimiento(c){
+  if(c.seguimientoDescartado) return false;
+  if(c.seguimiento) return true;
+  return diasEntre(c.fecha || hoyLocalISO(), hoyLocalISO()) <= DIAS_MAX_SIN_SEGUIMIENTO;
+}
 // Saca un número de WhatsApp de un texto libre ("IG @ana / 0414-555.12.34") en formato 58XXXXXXXXXX.
 function numeroWhatsApp(texto){
   const m = String(texto||'').match(/\+?\d[\d\s.\-()]{8,}\d/);
@@ -2228,7 +2236,7 @@ function renderHoy(){
   const mes = hoy.slice(0,7);
 
   const seguir = cotizacionesCache
-    .filter(function(c){ return seguimientoCot(c) <= hoy; })
+    .filter(function(c){ return cotEnSeguimiento(c) && seguimientoCot(c) <= hoy; })
     .sort(function(a,b){ return seguimientoCot(a).localeCompare(seguimientoCot(b)); });
   const deben = todasLasVentas
     .filter(function(v){ return calcularSaldo(v) > 0.004; })
@@ -2312,6 +2320,8 @@ function abrirFichaHoy(tipo, id){
         '<div><label>Otra fecha</label><input type="date" id="hoy-fecha-seg" value="'+seg+'"></div>'+
         '<button class="btn secondary small" style="flex:0 0 auto;margin-bottom:2px" onclick="guardarFechaSeguimiento(\''+c.id+'\')">Guardar</button>'+
       '</div>'+
+      '<button class="btn secondary full" style="margin-top:6px;color:var(--muted)" onclick="descartarSeguimiento(\''+c.id+'\')">✕ Descartar · no hacerle más seguimiento</button>'+
+      '<small class="hint">No borra la cotización: sigue en Cotizar, solo deja de aparecer en Hoy.</small>'+
       '<div class="section-title">Cotización</div>'+
       '<button class="btn full" style="margin-top:8px" onclick="cerrarFichaHoy();convertirEnVenta(\''+c.id+'\')">Convertir en venta →</button>'+
       '<button class="btn secondary full" style="margin-top:6px" onclick="irAEditarCotizacion(\''+c.id+'\')">✏️ Editar cotización</button>';
@@ -2342,8 +2352,14 @@ function cerrarFichaHoy(){
   fichaHoyActual = null;
   document.getElementById('modal-hoy').classList.add('hidden');
 }
+function descartarSeguimiento(id){
+  db.collection('cotizaciones').doc(id).update({ seguimientoDescartado: true })
+    .then(cerrarFichaHoy)
+    .catch(function(err){ alert('No se pudo descartar: '+err.message); });
+}
 function actualizarSeguimiento(id, fecha){
-  db.collection('cotizaciones').doc(id).update({ seguimiento: fecha })
+  // Poner una fecha nueva reactiva el seguimiento aunque se hubiera descartado antes.
+  db.collection('cotizaciones').doc(id).update({ seguimiento: fecha, seguimientoDescartado: false })
     .then(cerrarFichaHoy)
     .catch(function(err){ alert('No se pudo guardar el seguimiento: '+err.message); });
 }
