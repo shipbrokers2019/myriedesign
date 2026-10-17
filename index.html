@@ -942,6 +942,7 @@ let todasLasVentas = [];        // cache local de ventas para filtros de reporte
 let ventaActualId = null;       // id de la venta que se está editando (null = nueva)
 let ventaItems = [];            // items de la venta en el modal
 let ventaAbonos = [];           // abonos de la venta en el modal
+let abonosRegistrados = 0;      // cuántos de ventaAbonos ya venían registrados (no se pueden quitar)
 let ventaFotos = { productoFinal: [], guiaEnvio: [] };
 let cotizacionOrigenId = null;  // si la venta viene de una cotización, guardamos su id
 // Tipografía elegida por cada campo de texto (nombre/adic/frontal/posterior) en cada formulario (cot / v)
@@ -1656,6 +1657,7 @@ function abrirFormVenta(id, cotizacionPrellenada){
   // limpiar el formulario de "agregar pieza" y la selección de tipografía
   limpiarCamposPiezaVenta();
   piezaEditando = null;
+  abonosRegistrados = ventaAbonos.length;
   // Sin piezas, el formulario arranca abierto; con piezas, escondido detrás de "+ Agregar otra pieza".
   mostrarFormPiezaVenta(ventaItems.length === 0);
   document.getElementById('ab-tasa').value = tasaBcvDia || '';
@@ -1864,8 +1866,12 @@ function renderAbonosVenta(){
       lineas.push('Bs.: '+Number(a.montoBs||0).toFixed(2));
       lineas.push('Tasa BCV: '+Number(a.tasaBcv).toFixed(2));
     }
-    return '<div class="abono-row"><span>'+lineas.map(escapeHtml).join('<br>')+'</span>'+
-      '<span class="x" onclick="quitarAbono('+idx+')">✕</span></div>';
+    // Los abonos que ya venían registrados (guardados o traídos de la cotización) no se
+    // pueden quitar; solo los agregados ahora mismo, por si se cargó mal el monto.
+    const quitar = idx < abonosRegistrados
+      ? '<span style="color:var(--success);font-size:.75rem;font-weight:700">🔒 Registrado</span>'
+      : '<span class="x" onclick="quitarAbono('+idx+')">✕</span>';
+    return '<div class="abono-row"><span>'+lineas.map(escapeHtml).join('<br>')+'</span>'+quitar+'</div>';
   }).join('');
   recalcularSaldoModal();
 }
