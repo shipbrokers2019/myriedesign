@@ -245,6 +245,22 @@
   /* Venta bloqueada por status "Enviado": no se puede modificar salvo el status, guardar y eliminar. */
   .venta-bloqueada .x{display:none;}
   .venta-bloqueada .font-grid{pointer-events:none;opacity:.5;}
+  /* Pestaña Hoy: números del día arriba y tarjetas compactas por cliente. */
+  .hoy-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px;}
+  .hoy-stat{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;}
+  .hoy-stat small{display:block;color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.5px;}
+  .hoy-stat b{display:block;font-size:1.25rem;margin-top:2px;}
+  .hoy-card{display:block;width:100%;text-align:left;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:8px;color:var(--text);font:inherit;cursor:pointer;}
+  .hoy-card .top-line{display:flex;justify-content:space-between;gap:8px;font-weight:700;font-size:.92rem;}
+  .hoy-card .sub-line{color:var(--muted);font-size:.78rem;margin-top:3px;}
+  .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:700;margin-top:6px;margin-right:4px;}
+  .pill.tarde{background:#e0525233;color:#ff8a8a;}
+  .pill.hoy{background:#e0a94c33;color:var(--warn);}
+  .pill.ok{background:#4caf7d33;color:var(--success);}
+  .pill.info{background:#5b8def33;color:#8fb4ff;}
+  .hoy-detalle{font-size:.85rem;line-height:1.6;}
+  .hoy-detalle .linea{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border);padding:6px 0;}
+  .hoy-detalle .linea span:first-child{color:var(--muted);}
 </style>
 </head>
 <body>
@@ -304,8 +320,32 @@
     </div>
   </div>
 
+  <!-- ---------- TAB: HOY (primera pantalla al abrir la app) ---------- -->
+  <div id="tab-hoy" class="tab-content">
+    <div class="hoy-stats">
+      <div class="hoy-stat"><small>Seguimientos</small><b id="hoy-n-seguimientos">0</b></div>
+      <div class="hoy-stat"><small>Por cobrar</small><b id="hoy-n-cobrar" style="color:var(--danger)">$0.00</b></div>
+      <div class="hoy-stat"><small>Entregas 7 días</small><b id="hoy-n-entregas">0</b></div>
+      <div class="hoy-stat"><small>Cobrado este mes</small><b id="hoy-n-cobrado" style="color:var(--success)">$0.00</b></div>
+    </div>
+    <div class="card">
+      <h2>Escribir hoy</h2>
+      <small class="hint">Cotizaciones a las que toca hacer seguimiento, empezando por la más atrasada.</small>
+      <div id="hoy-seguimientos"><div class="empty-state">Cargando...</div></div>
+    </div>
+    <div class="card">
+      <h2>Clientes que deben</h2>
+      <div id="hoy-deben"><div class="empty-state">Cargando...</div></div>
+    </div>
+    <div class="card">
+      <h2>Entregas próximas</h2>
+      <small class="hint">Ventas no enviadas con entrega en los próximos 7 días o ya atrasada.</small>
+      <div id="hoy-entregas"><div class="empty-state">Cargando...</div></div>
+    </div>
+  </div>
+
   <!-- ---------- TAB: COTIZAR ---------- -->
-  <div id="tab-cotizar" class="tab-content">
+  <div id="tab-cotizar" class="tab-content hidden">
     <div class="card">
       <h2>Nueva cotización</h2>
       <small class="hint">Todavía no hace falta el nombre del cliente. Cuando confirme la compra, la convertís en venta y ahí pedís sus datos.</small>
@@ -535,7 +575,8 @@
   </div>
 
   <nav class="tabs">
-    <button id="navbtn-cotizar" class="active" onclick="mostrarTab('cotizar')"><span class="ic">🧾</span>Cotizar</button>
+    <button id="navbtn-hoy" class="active" onclick="mostrarTab('hoy')"><span class="ic">📅</span>Hoy</button>
+    <button id="navbtn-cotizar" onclick="mostrarTab('cotizar')"><span class="ic">🧾</span>Cotizar</button>
     <button id="navbtn-ventas" onclick="mostrarTab('ventas')"><span class="ic">💰</span>Ventas</button>
     <button id="navbtn-reportes" onclick="mostrarTab('reportes')"><span class="ic">📊</span>Reportes</button>
     <button id="navbtn-nombresdijes" onclick="mostrarTab('nombresdijes')"><span class="ic">🏷️</span>Nombres/Dijes</button>
@@ -677,6 +718,17 @@
     <button class="btn full" style="margin-top:16px;background:var(--success);color:#fff" onclick="guardarVenta()">✓ Guardar venta</button>
     <button class="btn secondary full" style="margin-top:8px" onclick="verResumenVenta()">📋 Ver / copiar resumen</button>
     <button id="v-btn-eliminar" class="btn danger full hidden" style="margin-top:8px" onclick="eliminarVenta()">Eliminar venta</button>
+  </div>
+</div>
+
+<!-- ====================== MODAL: FICHA RÁPIDA (pestaña Hoy) ====================== -->
+<div id="modal-hoy" class="modal-overlay hidden" onclick="if(event.target===this) cerrarFichaHoy()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="modal-hoy-titulo"></h2>
+      <button class="close-x" onclick="cerrarFichaHoy()">✕</button>
+    </div>
+    <div id="modal-hoy-cuerpo"></div>
   </div>
 </div>
 
@@ -1024,12 +1076,13 @@ function doLogout(){ auth.signOut(); }
 
 /* -------------------- 4) NAVEGACIÓN DE PESTAÑAS -------------------- */
 function mostrarTab(nombre){
-  ['cotizar','ventas','reportes','nombresdijes'].forEach(function(t){
+  ['hoy','cotizar','ventas','reportes','nombresdijes'].forEach(function(t){
     document.getElementById('tab-'+t).classList.toggle('hidden', t !== nombre);
     document.getElementById('navbtn-'+t).classList.toggle('active', t === nombre);
   });
   const mostrarResumen = (nombre === 'ventas' || nombre === 'reportes');
-  const ocultarAmbas = (nombre === 'nombresdijes');
+  const ocultarAmbas = (nombre === 'nombresdijes' || nombre === 'hoy');
+  if(nombre === 'hoy'){ renderHoy(); }
   document.getElementById('tasa-bcv-card').classList.toggle('hidden', mostrarResumen || ocultarAmbas);
   document.getElementById('ventas-resumen-card').classList.toggle('hidden', !mostrarResumen);
   if(mostrarResumen){ actualizarResumenVentas(); }
@@ -1310,6 +1363,7 @@ function guardarCotizacion(){
     promesa = db.collection('cotizaciones').doc(editandoId).update(data);
   } else {
     data.status = 'Cotizado';
+    data.seguimiento = sumarDias(data.fecha, 2);
     data.creadoPor = currentUser.email;
     data.creadoEn = firebase.firestore.FieldValue.serverTimestamp();
     promesa = db.collection('cotizaciones').add(data);
@@ -1365,6 +1419,7 @@ function cargarCotizacionesPendientes(){
       const tb = b.creadoEn && b.creadoEn.seconds ? b.creadoEn.seconds : 0;
       return tb - ta;
     });
+    hoyCotizacionesListas = true;
     renderCotizacionesPendientes();
   }, function(err){
     console.error('No se pudieron cargar las cotizaciones pendientes:', err);
@@ -1373,6 +1428,7 @@ function cargarCotizacionesPendientes(){
   });
 }
 function renderCotizacionesPendientes(){
+  renderHoy();
   const el = document.getElementById('cotizaciones-pendientes-list');
   if(cotizacionesCache.length === 0){ el.innerHTML = '<div class="empty-state">No hay cotizaciones pendientes.</div>'; return; }
   el.innerHTML = cotizacionesCache.map(function(c){
@@ -1464,6 +1520,7 @@ function cargarVentas(){
     todasLasVentas = [];
     snap.forEach(function(doc){ todasLasVentas.push(Object.assign({id:doc.id}, doc.data())); });
     todasLasVentas.sort(function(a,b){ return (b.fechaVenta||'').localeCompare(a.fechaVenta||''); });
+    hoyVentasListas = true;
     renderVentasLista();
   });
 }
@@ -1479,6 +1536,7 @@ function calcularSaldo(venta){
 function renderVentasLista(){
   const el = document.getElementById('ventas-list');
   actualizarResumenVentas();
+  renderHoy();
   if(todasLasVentas.length === 0){ el.innerHTML = '<div class="empty-state">Todavía no hay ventas registradas.</div>'; return; }
   el.innerHTML = todasLasVentas.map(function(v){
     const saldo = calcularSaldo(v);
@@ -2120,6 +2178,194 @@ function exportarPDFNombresDijes(){
 
   const w = window.open('', '_blank');
   w.document.open(); w.document.write(html); w.document.close();
+}
+
+/* -------------------- 12b) PESTAÑA HOY --------------------
+   Primera pantalla al abrir la app: a quién escribir, quién debe y qué hay que
+   entregar. Solo lee los datos que ya cargan Cotizar y Ventas; lo único que
+   escribe es el campo "seguimiento" de una cotización. */
+
+// Fecha local (no UTC): después de las 8pm en Venezuela, toISOString ya da mañana.
+function hoyLocalISO(){
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,10);
+}
+function diasEntre(desdeISO, hastaISO){
+  return Math.round((new Date(hastaISO+'T12:00:00') - new Date(desdeISO+'T12:00:00')) / 86400000);
+}
+// Las cotizaciones viejas no tienen "seguimiento": se asume 2 días después de su fecha.
+function seguimientoCot(c){
+  return c.seguimiento || sumarDias(c.fecha || hoyLocalISO(), 2);
+}
+// Saca un número de WhatsApp de un texto libre ("IG @ana / 0414-555.12.34") en formato 58XXXXXXXXXX.
+function numeroWhatsApp(texto){
+  const m = String(texto||'').match(/\+?\d[\d\s.\-()]{8,}\d/);
+  if(!m) return '';
+  let n = m[0].replace(/\D/g,'');
+  if(n.indexOf('58') === 0 && n.length === 12) return n;
+  if(n.charAt(0) === '0' && n.length === 11) return '58'+n.slice(1);
+  if(n.length === 10 && n.charAt(0) === '4') return '58'+n;
+  return n.length >= 10 ? n : '';
+}
+function pillAtraso(fechaISO, textoHoy){
+  const d = diasEntre(fechaISO, hoyLocalISO());
+  if(d > 0) return '<span class="pill tarde">Atrasado '+d+' día'+(d===1?'':'s')+'</span>';
+  if(d === 0) return '<span class="pill hoy">'+textoHoy+'</span>';
+  return '<span class="pill info">'+fmtFecha(fechaISO)+'</span>';
+}
+function productosCortos(items){
+  return (items||[]).map(function(it){ return (it.cadena || tipoPiezaTexto(it.tipo)) + (it.cantidad > 1 ? ' x'+it.cantidad : ''); }).join(', ');
+}
+
+let hoyCotizacionesListas = false;
+let hoyVentasListas = false;
+
+function renderHoy(){
+  if(!document.getElementById('tab-hoy')) return;
+  const hoy = hoyLocalISO();
+  const en7 = sumarDias(hoy, 7);
+  const mes = hoy.slice(0,7);
+
+  const seguir = cotizacionesCache
+    .filter(function(c){ return seguimientoCot(c) <= hoy; })
+    .sort(function(a,b){ return seguimientoCot(a).localeCompare(seguimientoCot(b)); });
+  const deben = todasLasVentas
+    .filter(function(v){ return calcularSaldo(v) > 0.004; })
+    .sort(function(a,b){ return (a.fechaVenta||'').localeCompare(b.fechaVenta||''); });
+  const entregas = todasLasVentas
+    .filter(function(v){ return v.status !== 'Enviado' && v.fechaEntrega && v.fechaEntrega <= en7; })
+    .sort(function(a,b){ return a.fechaEntrega.localeCompare(b.fechaEntrega); });
+  const porCobrar = deben.reduce(function(s,v){ return s + calcularSaldo(v); }, 0);
+  const cobradoMes = todasLasVentas.reduce(function(s,v){
+    return s + (v.abonos||[]).filter(function(a){ return (a.fecha||'').indexOf(mes) === 0; })
+      .reduce(function(x,a){ return x + Number(a.monto||0); }, 0);
+  }, 0);
+
+  document.getElementById('hoy-n-seguimientos').textContent = hoyCotizacionesListas ? seguir.length : '…';
+  document.getElementById('hoy-n-cobrar').textContent = '$'+porCobrar.toFixed(2);
+  document.getElementById('hoy-n-entregas').textContent = hoyVentasListas ? entregas.length : '…';
+  document.getElementById('hoy-n-cobrado').textContent = '$'+cobradoMes.toFixed(2);
+
+  const vacio = function(listo, texto){
+    return '<div class="empty-state">'+(listo ? texto : 'Cargando...')+'</div>';
+  };
+  document.getElementById('hoy-seguimientos').innerHTML = seguir.length ? seguir.map(function(c){
+    return '<button class="hoy-card" onclick="abrirFichaHoy(\'cot\',\''+c.id+'\')">'+
+      '<div class="top-line"><span>'+escapeHtml(c.referencia || '(sin referencia)')+'</span><span>$'+Number(c.total||0).toFixed(2)+'</span></div>'+
+      '<div class="sub-line">'+escapeHtml(productosCortos(c.items))+'</div>'+
+      pillAtraso(seguimientoCot(c), 'Toca hoy')+'</button>';
+  }).join('') : vacio(hoyCotizacionesListas, 'No hay seguimientos pendientes para hoy. 🎉');
+
+  document.getElementById('hoy-deben').innerHTML = deben.length ? deben.map(function(v){
+    return '<button class="hoy-card" onclick="abrirFichaHoy(\'venta\',\''+v.id+'\')">'+
+      '<div class="top-line"><span>'+escapeHtml(v.nombre || '(sin nombre)')+'</span><span class="saldo-pos">Debe $'+calcularSaldo(v).toFixed(2)+'</span></div>'+
+      '<div class="sub-line">'+escapeHtml(productosCortos(v.items))+'</div>'+
+      '<span class="badge '+statusClase(v.status)+'" style="margin-top:6px">'+statusTexto(v.status)+'</span></button>';
+  }).join('') : vacio(hoyVentasListas, 'Nadie debe nada por ahora.');
+
+  document.getElementById('hoy-entregas').innerHTML = entregas.length ? entregas.map(function(v){
+    return '<button class="hoy-card" onclick="abrirFichaHoy(\'venta\',\''+v.id+'\')">'+
+      '<div class="top-line"><span>'+escapeHtml(v.nombre || '(sin nombre)')+'</span><span>'+fmtFecha(v.fechaEntrega)+'</span></div>'+
+      '<div class="sub-line">'+escapeHtml(productosCortos(v.items))+'</div>'+
+      pillAtraso(v.fechaEntrega, 'Entrega hoy')+
+      '<span class="badge '+statusClase(v.status)+'" style="margin-top:6px">'+statusTexto(v.status)+'</span></button>';
+  }).join('') : vacio(hoyVentasListas, 'No hay entregas en los próximos 7 días.');
+
+  // Si la ficha está abierta, se refresca con los datos nuevos.
+  if(fichaHoyActual && !document.getElementById('modal-hoy').classList.contains('hidden')){
+    abrirFichaHoy(fichaHoyActual.tipo, fichaHoyActual.id);
+  }
+}
+
+let fichaHoyActual = null;
+function lineaFicha(etiqueta, valorHtml){
+  return '<div class="linea"><span>'+etiqueta+'</span><span>'+valorHtml+'</span></div>';
+}
+function botonesContacto(numero){
+  if(!numero) return '';
+  return '<div class="row" style="margin-top:10px">'+
+    '<a class="btn small" style="background:#25D366;color:#fff;text-decoration:none" href="https://wa.me/'+numero+'" target="_blank">💬 WhatsApp</a>'+
+    '<button class="btn secondary small" onclick="copiarNumeroHoy(\''+numero+'\', this)">📋 Copiar número</button>'+
+    '</div>';
+}
+function abrirFichaHoy(tipo, id){
+  const titulo = document.getElementById('modal-hoy-titulo');
+  const cuerpo = document.getElementById('modal-hoy-cuerpo');
+  let html = '';
+  if(tipo === 'cot'){
+    const c = cotizacionesCache.find(function(x){ return x.id === id; });
+    if(!c){ cerrarFichaHoy(); return; }
+    const seg = seguimientoCot(c);
+    titulo.textContent = c.referencia || '(sin referencia)';
+    html += '<div class="hoy-detalle">'+
+      lineaFicha('Cotizada', fmtFecha(c.fecha))+
+      lineaFicha('Total', '$'+Number(c.total||0).toFixed(2))+
+      lineaFicha('Seguimiento', fmtFecha(seg)+(c.seguimiento ? '' : ' <small>(automático)</small>'))+
+      '<div style="margin-top:8px;color:var(--muted)">'+(c.items||[]).map(camposConEtiquetaLineas).join('<br><br>')+'</div>'+
+      '</div>'+
+      botonesContacto(numeroWhatsApp(c.referencia))+
+      '<div class="section-title">¿Ya le escribiste?</div>'+
+      '<button class="btn full" style="margin-top:8px" onclick="posponerSeguimiento(\''+c.id+'\',2)">✓ Sí · recordar en 2 días</button>'+
+      '<button class="btn secondary full" style="margin-top:6px" onclick="posponerSeguimiento(\''+c.id+'\',7)">✓ Sí · recordar en 1 semana</button>'+
+      '<div class="row" style="margin-top:6px;align-items:flex-end">'+
+        '<div><label>Otra fecha</label><input type="date" id="hoy-fecha-seg" value="'+seg+'"></div>'+
+        '<button class="btn secondary small" style="flex:0 0 auto;margin-bottom:2px" onclick="guardarFechaSeguimiento(\''+c.id+'\')">Guardar</button>'+
+      '</div>'+
+      '<div class="section-title">Cotización</div>'+
+      '<button class="btn full" style="margin-top:8px" onclick="cerrarFichaHoy();convertirEnVenta(\''+c.id+'\')">Convertir en venta →</button>'+
+      '<button class="btn secondary full" style="margin-top:6px" onclick="irAEditarCotizacion(\''+c.id+'\')">✏️ Editar cotización</button>';
+  } else {
+    const v = todasLasVentas.find(function(x){ return x.id === id; });
+    if(!v){ cerrarFichaHoy(); return; }
+    const abonado = (v.abonos||[]).reduce(function(s,a){ return s + Number(a.monto||0); }, 0);
+    const saldo = calcularSaldo(v);
+    titulo.textContent = v.nombre || '(sin nombre)';
+    html += '<div class="hoy-detalle">'+
+      lineaFicha('Status', '<span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span>')+
+      lineaFicha('Celular', escapeHtml(v.celular || '-'))+
+      lineaFicha('Venta', fmtFecha(v.fechaVenta))+
+      lineaFicha('Entrega aprox.', fmtFecha(v.fechaEntrega))+
+      lineaFicha('Total', '$'+Number(v.total||0).toFixed(2))+
+      lineaFicha('Abonado', '<span class="saldo-zero">$'+abonado.toFixed(2)+'</span>')+
+      lineaFicha('Saldo', '<span class="'+(saldo>0.004?'saldo-pos':'saldo-zero')+'">$'+saldo.toFixed(2)+'</span>')+
+      '<div style="margin-top:8px;color:var(--muted)">'+(v.items||[]).map(camposConEtiquetaLineas).join('<br><br>')+'</div>'+
+      '</div>'+
+      botonesContacto(numeroWhatsApp(v.celular))+
+      '<button class="btn full" style="margin-top:14px" onclick="cerrarFichaHoy();abrirFormVenta(\''+v.id+'\')">Abrir venta completa →</button>';
+  }
+  cuerpo.innerHTML = html;
+  fichaHoyActual = { tipo: tipo, id: id };
+  document.getElementById('modal-hoy').classList.remove('hidden');
+}
+function cerrarFichaHoy(){
+  fichaHoyActual = null;
+  document.getElementById('modal-hoy').classList.add('hidden');
+}
+function actualizarSeguimiento(id, fecha){
+  db.collection('cotizaciones').doc(id).update({ seguimiento: fecha })
+    .then(cerrarFichaHoy)
+    .catch(function(err){ alert('No se pudo guardar el seguimiento: '+err.message); });
+}
+function posponerSeguimiento(id, dias){ actualizarSeguimiento(id, sumarDias(hoyLocalISO(), dias)); }
+function guardarFechaSeguimiento(id){
+  const fecha = document.getElementById('hoy-fecha-seg').value;
+  if(!fecha){ alert('Elegí una fecha.'); return; }
+  actualizarSeguimiento(id, fecha);
+}
+function irAEditarCotizacion(id){
+  cerrarFichaHoy();
+  mostrarTab('cotizar');
+  editarCotizacionPendiente(id);
+  window.scrollTo(0,0);
+}
+function copiarNumeroHoy(numero, boton){
+  const listo = function(){ boton.textContent = '✓ Copiado'; };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(numero).then(listo).catch(function(){ boton.textContent = numero; });
+  } else {
+    boton.textContent = numero;
+  }
 }
 
 /* -------------------- 13) UTILIDADES -------------------- */

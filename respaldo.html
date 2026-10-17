@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Myriedesign - Respaldo</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+  body{background:#121212;color:#f5f5f0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;padding:24px;}
+  .box{max-width:380px;margin:40px auto;background:#1c1c1c;border:1px solid #333;border-radius:12px;padding:18px;}
+  h1{color:#D4AF37;font-size:1.3rem;margin:0 0 6px;}
+  p{color:#a8a29a;font-size:.85rem;}
+  label{display:block;font-size:.78rem;color:#a8a29a;margin-top:10px;}
+  input{width:100%;box-sizing:border-box;background:#262626;border:1px solid #333;color:#f5f5f0;padding:10px;border-radius:8px;margin-top:4px;}
+  button{width:100%;margin-top:14px;background:#D4AF37;color:#1a1a1a;border:none;padding:11px;border-radius:8px;font-weight:700;cursor:pointer;}
+  #log{white-space:pre-wrap;font-size:.82rem;margin-top:14px;color:#f5f5f0;}
+</style>
+</head>
+<body>
+<!-- Respaldo de solo lectura: descarga todas las colecciones de Firestore a un archivo JSON.
+     No escribe ni borra nada. -->
+<div class="box">
+  <h1>✦ Respaldo Myriedesign</h1>
+  <p>Descarga una copia de todos los datos (cotizaciones, ventas, catálogo y configuración) a un archivo en esta computadora. Solo lee, no cambia nada.</p>
+  <div id="login">
+    <label>Correo</label><input type="email" id="email" autocomplete="username">
+    <label>Contraseña</label><input type="password" id="pass" autocomplete="current-password">
+    <button onclick="entrar()">Iniciar sesión</button>
+  </div>
+  <button id="btn-respaldo" style="display:none" onclick="respaldar()">⬇ Descargar respaldo</button>
+  <div id="log"></div>
+</div>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBBgbmT8oIOTBI8ZSj0JG-sGlwjCZTI3Jo",
+  authDomain: "myriedesign-ee80b.firebaseapp.com",
+  projectId: "myriedesign-ee80b",
+  storageBucket: "myriedesign-ee80b.firebasestorage.app",
+  messagingSenderId: "570181552736",
+  appId: "1:570181552736:web:9daa9f8bad541cdb911105"
+};
+const COLECCIONES = ['cotizaciones','ventas','catalogo','products','config'];
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const log = function(t){ document.getElementById('log').textContent += t+'\n'; };
+
+auth.onAuthStateChanged(function(user){
+  document.getElementById('login').style.display = user ? 'none' : '';
+  document.getElementById('btn-respaldo').style.display = user ? '' : 'none';
+  if(user) log('Sesión iniciada: '+user.email);
+});
+function entrar(){
+  auth.signInWithEmailAndPassword(document.getElementById('email').value.trim(), document.getElementById('pass').value)
+    .catch(function(err){ log('No se pudo iniciar sesión: '+err.message); });
+}
+async function respaldar(){
+  const salida = { fecha: new Date().toISOString(), proyecto: firebaseConfig.projectId, colecciones: {} };
+  try{
+    for(const nombre of COLECCIONES){
+      const snap = await db.collection(nombre).get();
+      salida.colecciones[nombre] = {};
+      snap.forEach(function(doc){ salida.colecciones[nombre][doc.id] = doc.data(); });
+      log(nombre+': '+snap.size+' documentos');
+    }
+  }catch(err){
+    log('Error leyendo datos: '+err.message);
+    return;
+  }
+  const blob = new Blob([JSON.stringify(salida, null, 1)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'respaldo_myriedesign_'+salida.fecha.slice(0,10)+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  log('✓ Respaldo descargado. Revisa tu carpeta de Descargas.');
+}
+</script>
+</body>
+</html>
