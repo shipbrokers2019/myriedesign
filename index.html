@@ -606,7 +606,14 @@
     <label>Dirección de envío</label>
     <textarea id="v-direccion-envio" rows="2"></textarea>
 
-    <div class="section-title">Detalle de la pieza</div>
+    <div class="section-title">Piezas de la venta</div>
+    <div id="v-items-list"></div>
+    <div class="total-line"><span>Total</span><span id="v-total">$0.00</span></div>
+    <button id="v-btn-abrir-form-pieza" class="btn secondary full" style="margin-top:8px" onclick="abrirFormPiezaVenta()">+ Agregar otra pieza</button>
+
+    <!-- Formulario de pieza: escondido mientras la venta ya tiene piezas; se abre para agregar o editar una. -->
+    <div id="v-pieza-form" class="recuadro-abono hidden" style="margin-top:8px">
+    <div style="font-weight:700;color:var(--gold)" id="v-pieza-form-titulo">Nueva pieza</div>
     <label>Pieza</label>
     <input type="text" id="v-item-cadena" placeholder="Ej: Ristra, cadena cubana...">
 
@@ -659,8 +666,8 @@
     <textarea id="v-item-notas" rows="2"></textarea>
 
     <button id="v-btn-agregar-pieza" class="btn secondary full" style="margin-top:8px" onclick="agregarItemVenta()">+ Agregar pieza</button>
-    <div id="v-items-list"></div>
-    <div class="total-line"><span>Total</span><span id="v-total">$0.00</span></div>
+    <button id="v-btn-cancelar-pieza" class="btn secondary full" style="margin-top:6px" onclick="cancelarFormPiezaVenta()">Cancelar</button>
+    </div>
 
     <label>Total Bs. (opcional)</label>
     <input type="number" id="v-total-bs" step="0.01" placeholder="0.00">
@@ -1607,11 +1614,8 @@ function abrirFormVenta(id, cotizacionPrellenada){
     document.getElementById('v-fecha-envio').value = '';
     document.getElementById('v-total-bs').value = '';
     if(cotizacionPrellenada){
-      // La primera pieza se precarga en el formulario "Detalle de la pieza" (ver más abajo,
-      // después de limpiarCamposPiezaVenta) en vez de agregarse directo a la lista, para que
-      // se vea rellenada y el usuario confirme con "+ Agregar pieza". El resto de piezas
-      // (si la cotización tenía más de una) sí se agregan directo a la lista.
-      ventaItems = JSON.parse(JSON.stringify(cotizacionPrellenada.items.slice(1)));
+      // Todas las piezas de la cotización pasan directo a la lista de la venta.
+      ventaItems = JSON.parse(JSON.stringify(cotizacionPrellenada.items || []));
       document.getElementById('v-celular').value = cotizacionPrellenada.referencia || '';
       if(cotizacionPrellenada.totalBs !== undefined && cotizacionPrellenada.totalBs !== null){
         document.getElementById('v-total-bs').value = cotizacionPrellenada.totalBs;
@@ -1628,11 +1632,9 @@ function abrirFormVenta(id, cotizacionPrellenada){
   }
   // limpiar el formulario de "agregar pieza" y la selección de tipografía
   limpiarCamposPiezaVenta();
-  if(cotizacionPrellenada && cotizacionPrellenada.items && cotizacionPrellenada.items.length){
-    // Rellenamos el formulario con la primera pieza de la cotización para que no haya
-    // que volver a escribirla; el usuario confirma tocando "+ Agregar pieza a la venta".
-    precargarPiezaVenta(cotizacionPrellenada.items[0]);
-  }
+  piezaEditando = null;
+  // Sin piezas, el formulario arranca abierto; con piezas, escondido detrás de "+ Agregar otra pieza".
+  mostrarFormPiezaVenta(ventaItems.length === 0);
   document.getElementById('ab-tasa').value = tasaBcvDia || '';
   document.getElementById('ab-monto').value = '';
   document.getElementById('ab-monto-bs').value = '0.00';
@@ -1676,7 +1678,7 @@ function actualizarBloqueoVenta(){
     'v-item-nombre','v-item-nombre-adic','v-item-dijes',
     'v-item-tipo-medalla','v-item-cara-frontal','v-item-cara-posterior',
     'v-item-bisuteria-tipo',
-    'v-item-cantidad','v-item-precio','v-item-notas','v-btn-agregar-pieza',
+    'v-item-cantidad','v-item-precio','v-item-notas','v-btn-agregar-pieza','v-btn-abrir-form-pieza',
     'v-total-bs','v-fecha-venta','v-fecha-entrega','v-fecha-envio',
     'ab-fecha','ab-tasa','ab-monto','v-btn-agregar-abono',
     'v-foto-producto-file','v-btn-agregar-foto-producto',
@@ -1728,30 +1730,76 @@ function agregarItemVenta(){
     item.tipografiaFrontal = fuentesSel.vFrontal || '';
     item.tipografiaPosterior = fuentesSel.vPosterior || '';
   }
-  ventaItems.push(item);
+  if(piezaEditando !== null){
+    ventaItems.splice(piezaEditando, 0, item);   // vuelve a su lugar, ya editada
+  } else {
+    ventaItems.push(item);
+  }
+  piezaEditando = null;
   limpiarCamposPiezaVenta();
+  mostrarFormPiezaVenta(false);
   renderItemsVenta();
 }
-function quitarItemVenta(idx){ ventaItems.splice(idx,1); renderItemsVenta(); }
-/* Tocar una pieza ya agregada carga sus datos de vuelta en "Detalle de la pieza"
-   para poder modificarlos, y la saca de la lista (se vuelve a agregar, ya editada,
-   con el botón "+ Agregar pieza"). */
+function quitarItemVenta(idx){ ventaItems.splice(idx,1); renderItemsVenta(); if(!ventaItems.length) mostrarFormPiezaVenta(true); }
+
+/* Formulario de pieza de la venta: se muestra solo al agregar o editar una pieza. */
+let piezaEditando = null;      // índice original de la pieza en edición (null = pieza nueva)
+let piezaEditandoCopia = null; // copia para restaurarla si se cancela la edición
+function mostrarFormPiezaVenta(abierto){
+  document.getElementById('v-pieza-form').classList.toggle('hidden', !abierto);
+  document.getElementById('v-btn-abrir-form-pieza').classList.toggle('hidden', abierto);
+  document.getElementById('v-pieza-form-titulo').textContent = piezaEditando !== null ? 'Editando pieza '+(piezaEditando+1) : 'Nueva pieza';
+  document.getElementById('v-btn-agregar-pieza').textContent = piezaEditando !== null ? '✓ Guardar cambios de la pieza' : '+ Agregar pieza';
+  // Sin piezas en la venta no hay nada que cancelar: el formulario queda abierto.
+  document.getElementById('v-btn-cancelar-pieza').classList.toggle('hidden', ventaItems.length === 0 && piezaEditando === null);
+}
+function abrirFormPiezaVenta(){
+  if(piezaEditando !== null) cancelarFormPiezaVenta();
+  limpiarCamposPiezaVenta();
+  elegirTipoPieza('v-item', 'personalizado');
+  mostrarFormPiezaVenta(true);
+}
+function cancelarFormPiezaVenta(){
+  if(piezaEditando !== null && piezaEditandoCopia){
+    ventaItems.splice(piezaEditando, 0, piezaEditandoCopia);
+  }
+  piezaEditando = null;
+  piezaEditandoCopia = null;
+  limpiarCamposPiezaVenta();
+  renderItemsVenta();
+  mostrarFormPiezaVenta(ventaItems.length === 0);
+}
+/* "Editar" carga la pieza en el formulario y la saca de la lista mientras se edita;
+   "Guardar cambios" la devuelve a su lugar y "Cancelar" la restaura sin cambios. */
 function editarItemVenta(idx){
   if(document.getElementById('v-status').value === 'Enviado') return;
+  if(piezaEditando !== null) cancelarFormPiezaVenta();
   const it = ventaItems[idx];
   if(!it) return;
+  limpiarCamposPiezaVenta();
   precargarPiezaVenta(it);
+  piezaEditando = idx;
+  piezaEditandoCopia = it;
   ventaItems.splice(idx,1);
   renderItemsVenta();
+  mostrarFormPiezaVenta(true);
+  document.getElementById('v-pieza-form').scrollIntoView({ behavior:'smooth', block:'start' });
 }
 function renderItemsVenta(){
   const el = document.getElementById('v-items-list');
-  el.innerHTML = ventaItems.map(function(it, idx){
+  el.innerHTML = ventaItems.length ? ventaItems.map(function(it, idx){
     const subtotal = it.precio*it.cantidad;
     const campos = camposConEtiquetaLineas(it);
-    return '<div class="item-row item-row-pieza"><span onclick="editarItemVenta('+idx+')" style="cursor:pointer">'+(campos?campos+'<br>':'')+'Cantidad: '+it.cantidad+'<br>$'+subtotal.toFixed(2)+'</span>'+
-      '<span class="x" onclick="quitarItemVenta('+idx+')">✕</span></div>';
-  }).join('');
+    return '<div class="item-row item-row-pieza" style="flex-direction:column;align-items:stretch">'+
+      '<div style="display:flex;justify-content:space-between;font-weight:700">'+
+        '<span style="color:'+tipoPiezaColor(it.tipo)+'">Pieza '+(idx+1)+' · '+tipoPiezaTexto(it.tipo)+'</span>'+
+        '<span>$'+subtotal.toFixed(2)+'</span></div>'+
+      '<div style="line-height:1.5;margin-top:4px">'+(campos?campos+'<br>':'')+'Cantidad: '+it.cantidad+(it.cantidad>1?' × $'+Number(it.precio).toFixed(2):'')+'</div>'+
+      '<div class="row" style="margin-top:8px">'+
+        '<button type="button" class="btn secondary small x" style="color:var(--text);padding:6px 10px" onclick="editarItemVenta('+idx+')">✏️ Editar</button>'+
+        '<button type="button" class="btn secondary small x" style="padding:6px 10px" onclick="quitarItemVenta('+idx+')">✕ Quitar</button>'+
+      '</div></div>';
+  }).join('') : '<div class="empty-state" style="padding:12px">Todavía no hay piezas. Agregá la primera abajo.</div>';
   const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
   document.getElementById('v-total').textContent = '$'+total.toFixed(2);
   const tasaHoy = parseFloat(document.getElementById('tasa-bcv-global').value) || 0;
@@ -1873,6 +1921,7 @@ function renderFotosVenta(){
 function guardarVenta(){
   const nombre = document.getElementById('v-nombre').value.trim();
   if(!nombre){ alert('El nombre del cliente es obligatorio.'); return; }
+  if(piezaEditando !== null){ alert('Estás editando una pieza: tocá "Guardar cambios de la pieza" o "Cancelar" antes de guardar la venta.'); return; }
   if(ventaItems.length === 0){ alert('Agregá al menos un producto.'); return; }
 
   const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
