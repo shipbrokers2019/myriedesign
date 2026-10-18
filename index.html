@@ -293,6 +293,8 @@
   .v-sec-tit{font-weight:700;color:var(--gold);white-space:nowrap;}
   .v-sec-res{flex:1;color:var(--muted);font-size:.78rem;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .v-footer{position:sticky;bottom:-16px;background:var(--bg2);margin:12px -16px -16px;padding:10px 16px 16px;border-top:1px solid var(--border);}
+  /* En Cotizar (pestaña, no ventana) los botones quedan fijos justo encima de la barra de pestañas. */
+  .cot-footer{bottom:58px;margin:12px -14px -14px;padding:10px 14px 14px;border-radius:0 0 12px 12px;}
   /* Venta bloqueada por status "Enviado": no se puede modificar salvo el status, guardar y eliminar. */
   .venta-bloqueada .x{display:none;}
   .venta-bloqueada .font-grid{pointer-events:none;opacity:.5;}
@@ -386,99 +388,128 @@
   <!-- ---------- TAB: COTIZAR ---------- -->
   <div id="tab-cotizar" class="tab-content hidden">
     <div class="card">
-      <h2>Nueva cotización</h2>
+      <h2 id="cot-titulo">Nueva cotización</h2>
       <small class="hint">Todavía no hace falta el nombre del cliente. Cuando confirme la compra, la convertís en venta y ahí pedís sus datos.</small>
       <button type="button" id="cot-cancelar-edicion" class="btn secondary full hidden" style="margin-top:8px" onclick="cancelarEdicionCotizacion()">✕ Cancelar edición y empezar una nueva</button>
 
-      <label>Referencia (Instagram, apodo, nº de WhatsApp...)</label>
-      <input type="text" id="cot-referencia" placeholder="Ej: IG @juanita / +58 412...">
-
-      <div class="row">
-        <div><label>Fecha</label><input type="date" id="cot-fecha"></div>
-        <div><label>Tasa BCV</label><input type="number" id="cot-tasa" step="0.01" oninput="actualizarMontosCotizacion()"></div>
+      <!-- Resumen fijo arriba: a quién se cotiza y cuánto. -->
+      <div class="v-resumen" style="margin-top:10px">
+        <div class="v-res-nombre" id="cot-res-ref">(sin referencia)</div>
+        <div class="v-res-contacto" id="cot-res-contacto"></div>
+        <div class="v-res-montos">
+          <span>Total <b id="cot-res-total">$0.00</b></span>
+          <span>Abona <b id="cot-res-abona" style="color:var(--success)">$0.00</b></span>
+          <span>Restante <b id="cot-res-restante">$0.00</b></span>
+        </div>
       </div>
 
-      <div class="section-title">Detalle de la pieza</div>
-      <label>Pieza</label>
-      <input type="text" id="cot-cadena" placeholder="Ej: Ristra, cadena cubana...">
+      <!-- Secciones que se abren y cierran; cerradas muestran una línea de resumen. -->
+      <details class="v-sec" id="cot-sec-cliente" open>
+        <summary><span class="v-sec-tit">👤 Cliente</span><span class="v-sec-res" id="cot-sum-cliente"></span></summary>
+        <label>Referencia (Instagram, apodo, nº de WhatsApp...)</label>
+        <input type="text" id="cot-referencia" placeholder="Ej: IG @juanita / +58 412..." oninput="actualizarResumenesCot()">
+        <div class="row">
+          <div><label>Fecha</label><input type="date" id="cot-fecha" onchange="actualizarResumenesCot()"></div>
+          <div><label>Tasa BCV</label><input type="number" id="cot-tasa" step="0.01" oninput="actualizarMontosCotizacion()"></div>
+        </div>
+      </details>
 
-      <div class="row" style="margin-top:10px">
-        <button type="button" class="btn full" id="cot-tipo-personalizado" onclick="elegirTipoPieza('cot','personalizado')">Personalizado</button>
-        <button type="button" class="btn secondary full" id="cot-tipo-bisuteria" onclick="elegirTipoPieza('cot','bisuteria')">Bisutería</button>
-        <button type="button" class="btn secondary full" id="cot-tipo-grabado" onclick="elegirTipoPieza('cot','grabado')">Grabado</button>
-      </div>
+      <details class="v-sec" id="cot-sec-piezas" open>
+        <summary><span class="v-sec-tit">💎 Piezas</span><span class="v-sec-res" id="cot-sum-piezas"></span></summary>
+        <div id="cot-items-list"></div>
+        <div class="total-line"><span>Total</span><span id="cot-total">$0.00</span></div>
+        <button type="button" id="cot-btn-abrir-form-pieza" class="btn secondary full hidden" style="margin-top:8px" onclick="abrirFormPiezaCot()">+ Agregar otra pieza</button>
 
-      <div id="cot-fieldset-personalizado">
-        <label>Nombre</label>
-        <input type="text" id="cot-nombre" oninput="actualizarMuestraGrid('cot-nombre','cot-font-grid-nombre')">
-        <label>Tipografía del nombre (tocá una para elegirla)</label>
-        <div class="font-grid" id="cot-font-grid-nombre"></div>
+        <!-- Formulario de pieza: escondido mientras la cotización ya tiene piezas; se abre para agregar o editar una. -->
+        <div id="cot-pieza-form" class="recuadro-abono" style="margin-top:8px">
+          <div style="font-weight:700;color:var(--gold)" id="cot-pieza-form-titulo">Nueva pieza</div>
+          <label>Pieza</label>
+          <input type="text" id="cot-cadena" placeholder="Ej: Ristra, cadena cubana...">
 
-        <label>Nombre adicional</label>
-        <input type="text" id="cot-nombre-adic" oninput="actualizarMuestraGrid('cot-nombre-adic','cot-font-grid-adic')">
-        <label>Tipografía del nombre adicional (tocá una para elegirla)</label>
-        <div class="font-grid" id="cot-font-grid-adic"></div>
+          <div class="row" style="margin-top:10px">
+            <button type="button" class="btn full" id="cot-tipo-personalizado" onclick="elegirTipoPieza('cot','personalizado')">Personalizado</button>
+            <button type="button" class="btn secondary full" id="cot-tipo-bisuteria" onclick="elegirTipoPieza('cot','bisuteria')">Bisutería</button>
+            <button type="button" class="btn secondary full" id="cot-tipo-grabado" onclick="elegirTipoPieza('cot','grabado')">Grabado</button>
+          </div>
 
-        <label>Dijes</label>
-        <input type="text" id="cot-dijes" placeholder="Ej: corazón, inicial...">
-      </div>
+          <div id="cot-fieldset-personalizado">
+            <label>Nombre</label>
+            <input type="text" id="cot-nombre" oninput="actualizarMuestraGrid('cot-nombre','cot-font-grid-nombre')">
+            <label>Tipografía del nombre (tocá una para elegirla)</label>
+            <div class="font-grid" id="cot-font-grid-nombre"></div>
 
-      <div id="cot-fieldset-bisuteria" class="hidden">
-        <label>Tipo</label>
-        <textarea id="cot-bisuteria-tipo" rows="2"></textarea>
-      </div>
+            <label>Nombre adicional</label>
+            <input type="text" id="cot-nombre-adic" oninput="actualizarMuestraGrid('cot-nombre-adic','cot-font-grid-adic')">
+            <label>Tipografía del nombre adicional (tocá una para elegirla)</label>
+            <div class="font-grid" id="cot-font-grid-adic"></div>
 
-      <div id="cot-fieldset-grabado" class="hidden">
-        <label>Tipo</label>
-        <input type="text" id="cot-tipo-medalla" placeholder="Ej: corazón, redonda...">
+            <label>Dijes</label>
+            <input type="text" id="cot-dijes" placeholder="Ej: corazón, inicial...">
+          </div>
 
-        <label>Cara Frontal</label>
-        <input type="text" id="cot-cara-frontal" oninput="actualizarMuestraGrid('cot-cara-frontal','cot-font-grid-frontal')">
-        <label>Tipografía cara frontal (tocá una para elegirla)</label>
-        <div class="font-grid" id="cot-font-grid-frontal"></div>
+          <div id="cot-fieldset-bisuteria" class="hidden">
+            <label>Tipo</label>
+            <textarea id="cot-bisuteria-tipo" rows="2"></textarea>
+          </div>
 
-        <label>Cara Posterior</label>
-        <input type="text" id="cot-cara-posterior" oninput="actualizarMuestraGrid('cot-cara-posterior','cot-font-grid-posterior')">
-        <label>Tipografía cara posterior (tocá una para elegirla)</label>
-        <div class="font-grid" id="cot-font-grid-posterior"></div>
-      </div>
+          <div id="cot-fieldset-grabado" class="hidden">
+            <label>Tipo</label>
+            <input type="text" id="cot-tipo-medalla" placeholder="Ej: corazón, redonda...">
 
-      <div class="row">
-        <div><label>Cantidad</label><input type="number" id="cot-cantidad" value="1" min="1"></div>
-        <div><label>Precio $ (c/u)</label><input type="number" id="cot-precio" step="0.01" oninput="actualizarMontosCotizacion()"></div>
-      </div>
-      <label>Notas</label>
-      <textarea id="cot-notas" rows="2"></textarea>
+            <label>Cara Frontal</label>
+            <input type="text" id="cot-cara-frontal" oninput="actualizarMuestraGrid('cot-cara-frontal','cot-font-grid-frontal')">
+            <label>Tipografía cara frontal (tocá una para elegirla)</label>
+            <div class="font-grid" id="cot-font-grid-frontal"></div>
 
-      <button class="btn full btn-neon-verde" id="cot-btn-agregar-pieza" style="margin-top:8px" onclick="agregarItemCotizacion()">+ Agregar pieza a la cotización</button>
-      <button class="btn secondary full hidden" id="cot-btn-cancelar-pieza" style="margin-top:6px" onclick="cancelarEdicionPiezaCot()">Cancelar edición de la pieza</button>
+            <label>Cara Posterior</label>
+            <input type="text" id="cot-cara-posterior" oninput="actualizarMuestraGrid('cot-cara-posterior','cot-font-grid-posterior')">
+            <label>Tipografía cara posterior (tocá una para elegirla)</label>
+            <div class="font-grid" id="cot-font-grid-posterior"></div>
+          </div>
 
-      <div id="cot-items-list"></div>
-      <div class="total-line"><span>Total</span><span id="cot-total">$0.00</span></div>
+          <div class="row">
+            <div><label>Cantidad</label><input type="number" id="cot-cantidad" value="1" min="1"></div>
+            <div><label>Precio $ (c/u)</label><input type="number" id="cot-precio" step="0.01" oninput="actualizarMontosCotizacion()"></div>
+          </div>
+          <label>Notas</label>
+          <textarea id="cot-notas" rows="2"></textarea>
 
-      <div class="section-title">Montos (automáticos)</div>
-      <small class="hint">Se calculan solos a partir del Total y la Tasa BCV que pusiste arriba.</small>
-      <div class="row">
-        <div><label>Total $</label><input type="text" id="cot-total-2" readonly value="0.00"></div>
-        <div><label>Total Bs.</label><input type="text" id="cot-total-bs" readonly value="0.00"></div>
-      </div>
-      <div class="row">
-        <div><label id="cot-abonar-label">Monto a abonar $ (50%)</label><input type="number" step="0.01" id="cot-abonar" oninput="onAbonarManualChange()" value="0.00"></div>
-        <div><label>Monto a abonar Bs.</label><input type="text" id="cot-abonar-bs" readonly value="0.00"></div>
-      </div>
-      <label>Restante $</label>
-      <input type="text" id="cot-restante" readonly value="0.00">
+          <button class="btn full btn-neon-verde" id="cot-btn-agregar-pieza" style="margin-top:8px" onclick="agregarItemCotizacion()">+ Agregar pieza a la cotización</button>
+          <button class="btn secondary full hidden" id="cot-btn-cancelar-pieza" style="margin-top:6px" onclick="cancelarEdicionPiezaCot()">Cancelar</button>
+        </div>
+      </details>
 
-      <button class="btn full" style="margin-top:14px;background:transparent;color:#fff;border:1px solid var(--border)" onclick="generarMensajeCotizacion()">Generar mensaje para el cliente</button>
+      <details class="v-sec" id="cot-sec-montos">
+        <summary><span class="v-sec-tit">💵 Montos</span><span class="v-sec-res" id="cot-sum-montos"></span></summary>
+        <small class="hint">Se calculan solos a partir del Total y la Tasa BCV.</small>
+        <div class="row">
+          <div><label>Total $</label><input type="text" id="cot-total-2" readonly value="0.00"></div>
+          <div><label>Total Bs.</label><input type="text" id="cot-total-bs" readonly value="0.00"></div>
+        </div>
+        <div class="row">
+          <div><label id="cot-abonar-label">Monto a abonar $ (50%)</label><input type="number" step="0.01" id="cot-abonar" oninput="onAbonarManualChange()" value="0.00"></div>
+          <div><label>Monto a abonar Bs.</label><input type="text" id="cot-abonar-bs" readonly value="0.00"></div>
+        </div>
+        <label>Restante $</label>
+        <input type="text" id="cot-restante" readonly value="0.00">
+      </details>
 
-      <div id="cot-mensaje-wrap" class="hidden" style="margin-top:12px">
+      <!-- Aparece al tocar "Generar mensaje" abajo. -->
+      <details class="v-sec hidden" id="cot-mensaje-wrap">
+        <summary><span class="v-sec-tit">💬 Mensaje</span><span class="v-sec-res">Listo para enviar</span></summary>
         <label>Mensaje (tocá para copiar)</label>
         <textarea id="cot-mensaje" class="msg-box" readonly></textarea>
-        <button class="btn secondary full" style="margin-top:6px" onclick="copiarMensajeCotizacion()">📋 Copiar mensaje</button>
-        <button class="btn full" style="margin-top:6px;background:#25D366;color:#fff" onclick="enviarWhatsAppCotizacion()">💬 Enviar por WhatsApp</button>
-      </div>
+        <div class="row" style="margin-top:6px">
+          <button class="btn secondary" onclick="copiarMensajeCotizacion()">📋 Copiar</button>
+          <button class="btn" style="background:#25D366;color:#fff" onclick="enviarWhatsAppCotizacion()">💬 WhatsApp</button>
+        </div>
+      </details>
 
-      <button id="cot-guardar-btn" class="btn full" style="margin-top:10px;background:var(--success);color:#fff" onclick="guardarCotizacion()">✓ Guardar cotización</button>
+      <!-- Botones fijos abajo -->
+      <div class="v-footer cot-footer">
+        <button id="cot-guardar-btn" class="btn full" style="background:var(--success);color:#fff" onclick="guardarCotizacion()">✓ Guardar cotización</button>
+        <button class="btn secondary small full" style="margin-top:6px" onclick="generarMensajeCotizacion()">💬 Generar mensaje para el cliente</button>
+      </div>
     </div>
   </div>
 
@@ -1222,29 +1253,68 @@ function agregarItemCotizacion(){
     cotizacionItems.push(item);
   }
   cotPiezaEditando = null;
+  cotFormPiezaAbierto = false;
   limpiarCamposPiezaCot();
   actualizarBotonesPiezaCot();
   renderItemsCotizacion();
 }
 /* Edición de una pieza ya agregada: la pieza queda en la lista (marcada) mientras se
-   corrige arriba; "Guardar cambios de la pieza" la reemplaza y "Cancelar" la deja igual.
-   El índice en edición está en cotPiezaEditando (declarado con las demás variables globales). */
+   corrige abajo; "Guardar cambios de la pieza" la reemplaza y "Cancelar" la deja igual.
+   El índice en edición está en cotPiezaEditando (declarado con las demás variables globales).
+   Como en la venta, el formulario de pieza se esconde cuando ya hay piezas y se abre con
+   "+ Agregar otra pieza" o "Editar". */
+let cotFormPiezaAbierto = false;   // true = se tocó "+ Agregar otra pieza"
 function actualizarBotonesPiezaCot(){
   const editando = cotPiezaEditando !== null;
+  const abierto = editando || cotFormPiezaAbierto || cotizacionItems.length === 0;
+  document.getElementById('cot-pieza-form').classList.toggle('hidden', !abierto);
+  document.getElementById('cot-btn-abrir-form-pieza').classList.toggle('hidden', abierto);
+  document.getElementById('cot-pieza-form-titulo').textContent = editando ? 'Editando pieza '+(cotPiezaEditando+1) : 'Nueva pieza';
   document.getElementById('cot-btn-agregar-pieza').textContent = editando
     ? '✓ Guardar cambios de la pieza '+(cotPiezaEditando+1) : '+ Agregar pieza a la cotización';
-  document.getElementById('cot-btn-cancelar-pieza').classList.toggle('hidden', !editando);
+  // Sin piezas no hay nada que cancelar: el formulario queda abierto.
+  document.getElementById('cot-btn-cancelar-pieza').classList.toggle('hidden', !editando && cotizacionItems.length === 0);
+}
+function abrirFormPiezaCot(){
+  cotFormPiezaAbierto = true;
+  limpiarCamposPiezaCot();
+  elegirTipoPieza('cot', 'personalizado');
+  actualizarBotonesPiezaCot();
 }
 function cancelarEdicionPiezaCot(){
   cotPiezaEditando = null;
+  cotFormPiezaAbierto = false;
   limpiarCamposPiezaCot();
   actualizarBotonesPiezaCot();
   renderItemsCotizacion();
 }
 function avisarSiEditandoPiezaCot(){
   if(cotPiezaEditando === null) return false;
-  alert('Estás editando una pieza: tocá "Guardar cambios de la pieza" o "Cancelar edición de la pieza" primero.');
+  alert('Estás editando una pieza: tocá "Guardar cambios de la pieza" o "Cancelar" primero.');
   return true;
+}
+/* Resumen de arriba y líneas de cada sección cerrada del Cotizador. */
+function actualizarResumenesCot(){
+  const ref = document.getElementById('cot-referencia').value.trim();
+  const fecha = document.getElementById('cot-fecha').value;
+  const tasa = parseFloat(document.getElementById('cot-tasa').value) || 0;
+  const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
+  const abonar = parseFloat(document.getElementById('cot-abonar').value) || 0;
+  const n = cotizacionItems.length;
+  document.getElementById('cot-res-ref').textContent = ref || '(sin referencia)';
+  document.getElementById('cot-res-contacto').textContent = [fecha ? fmtFecha(fecha) : '', tasa ? 'Tasa '+fmtDolar(tasa) : ''].filter(Boolean).join(' · ');
+  document.getElementById('cot-res-total').textContent = '$'+total.toFixed(2);
+  document.getElementById('cot-res-abona').textContent = '$'+abonar.toFixed(2);
+  document.getElementById('cot-res-restante').textContent = '$'+(total-abonar).toFixed(2);
+  document.getElementById('cot-sum-cliente').textContent = [ref, fecha ? fmtFecha(fecha) : ''].filter(Boolean).join(' · ') || 'Falta completar';
+  document.getElementById('cot-sum-piezas').textContent = n ? n+' pieza'+(n===1?'':'s')+' · '+descripcionPiezas(cotizacionItems) : 'Sin piezas';
+  document.getElementById('cot-sum-montos').textContent = 'Abona $'+abonar.toFixed(2)+(tasa ? ' · Bs. '+fmtBs(abonar*tasa) : '');
+}
+/* Qué secciones quedan abiertas: nueva cotización = Cliente y Piezas; al editar una guardada, todas cerradas. */
+function abrirSeccionesCot(editando){
+  document.getElementById('cot-sec-cliente').open = !editando;
+  document.getElementById('cot-sec-piezas').open = !editando;
+  document.getElementById('cot-sec-montos').open = false;
 }
 function renderItemsCotizacion(){
   const el = document.getElementById('cot-items-list');
@@ -1253,7 +1323,7 @@ function renderItemsCotizacion(){
     const campos = camposConEtiquetaLineas(it);
     const editando = idx === cotPiezaEditando;
     return '<div class="item-row item-row-pieza" style="flex-direction:column;align-items:stretch'+(editando?';border:1px solid #39ff88':'')+'">'+
-      '<div style="font-weight:700">Pieza '+(idx+1)+(editando?' <span style="color:#39ff88">· editando arriba</span>':'')+'</div>'+
+      '<div style="font-weight:700">Pieza '+(idx+1)+(editando?' <span style="color:#39ff88">· editando abajo</span>':'')+'</div>'+
       '<div style="line-height:1.5;margin-top:4px">'+(campos?campos+'<br>':'')+'Cantidad: '+it.cantidad+'<br>$'+subtotal.toFixed(2)+'</div>'+
       '<div class="row" style="margin-top:8px">'+
         '<button type="button" class="btn secondary small" onclick="editarItemCotizacion('+idx+')">✏️ Editar</button>'+
@@ -1309,7 +1379,8 @@ function editarItemCotizacion(idx){
   cotPiezaEditando = idx;
   actualizarBotonesPiezaCot();
   renderItemsCotizacion();
-  document.getElementById('cot-cadena').scrollIntoView({ behavior:'smooth', block:'center' });
+  document.getElementById('cot-sec-piezas').open = true;
+  document.getElementById('cot-pieza-form').scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
 /* Si el usuario escribe un monto distinto en "Monto a abonar", dejamos de
@@ -1332,6 +1403,7 @@ function actualizarMontosCotizacion(){
   document.getElementById('cot-total-bs').value = (total*tasa).toFixed(2);
   document.getElementById('cot-abonar-bs').value = (abonar*tasa).toFixed(2);
   document.getElementById('cot-restante').value = (total-abonar).toFixed(2);
+  actualizarResumenesCot();
 }
 
 function generarMensajeCotizacion(){
@@ -1386,7 +1458,10 @@ function generarMensajeCotizacion(){
   msg += 'Monto en Bs. Valido hasta 5:00pm de hoy';
 
   document.getElementById('cot-mensaje').value = msg;
-  document.getElementById('cot-mensaje-wrap').classList.remove('hidden');
+  const wrap = document.getElementById('cot-mensaje-wrap');
+  wrap.classList.remove('hidden');
+  wrap.open = true;
+  wrap.scrollIntoView({ behavior:'smooth', block:'start' });
 }
 function copiarMensajeCotizacion(){ copiarTexto(document.getElementById('cot-mensaje')); }
 function enviarWhatsAppCotizacion(){
@@ -1454,6 +1529,7 @@ function editarCotizacionPendiente(id){
   if(!c) return;
   cotizacionEditandoId = id;
   cotizacionItems = (c.items || []).slice();
+  cotFormPiezaAbierto = false;
   cotPiezaEditando = null;
   limpiarCamposPiezaCot();
   actualizarBotonesPiezaCot();
@@ -1468,11 +1544,15 @@ function editarCotizacionPendiente(id){
   actualizarMontosCotizacion();
   document.getElementById('cot-guardar-btn').textContent = '✓ Guardar cambios';
   document.getElementById('cot-cancelar-edicion').classList.remove('hidden');
+  document.getElementById('cot-titulo').textContent = 'Editando cotización';
+  abrirSeccionesCot(true);
+  actualizarResumenesCot();
 }
 function cancelarEdicionCotizacion(){
   cotizacionEditandoId = null;
   abonarManual = false;
   cotizacionItems = [];
+  cotFormPiezaAbierto = false;
   cotPiezaEditando = null;
   limpiarCamposPiezaCot();
   actualizarBotonesPiezaCot();
@@ -1485,6 +1565,8 @@ function cancelarEdicionCotizacion(){
   document.getElementById('cot-mensaje-wrap').classList.add('hidden');
   document.getElementById('cot-guardar-btn').textContent = '✓ Guardar cotización';
   document.getElementById('cot-cancelar-edicion').classList.add('hidden');
+  document.getElementById('cot-titulo').textContent = 'Nueva cotización';
+  abrirSeccionesCot(false);
   actualizarMontosCotizacion();
 }
 
