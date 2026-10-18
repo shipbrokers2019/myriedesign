@@ -510,15 +510,28 @@
       </div>
       <div id="ventas-list"><div class="empty-state">Cargando...</div></div>
     </div>
-    <details class="card mas-opciones">
+    <details class="card mas-opciones" ontoggle="if(this.open) elegirTipoBorrar(tipoBorrar)">
       <summary>Más opciones</summary>
-      <div class="section-title">Borrar ventas viejas</div>
-      <small class="hint">Solo borra las ventas <b>Entregadas y pagadas completas</b> (saldo $0) vendidas en el período. Antes de borrar se descarga un CSV de respaldo (no incluye las fotos).</small>
-      <div class="row" style="margin-top:6px">
-        <div><label>Desde</label><input type="date" id="ventas-borrar-desde"></div>
-        <div><label>Hasta</label><input type="date" id="ventas-borrar-hasta"></div>
+      <div class="section-title">Borrar registros viejos</div>
+      <label>Qué borrar</label>
+      <div class="filtros" id="borrar-tipos">
+        <button type="button" class="filtro activo" data-tipo="cotizaciones" onclick="elegirTipoBorrar('cotizaciones')">Cotizaciones</button>
+        <button type="button" class="filtro" data-tipo="entregadas" onclick="elegirTipoBorrar('entregadas')">Entregadas y pagadas</button>
+        <button type="button" class="filtro" data-tipo="vendido" onclick="elegirTipoBorrar('vendido')">Vendido</button>
       </div>
-      <button class="btn danger full" style="margin-top:10px" onclick="borrarVentasPorPeriodo()">🗑 Borrar ventas entregadas y pagadas del período</button>
+      <small class="hint" id="borrar-explicacion"></small>
+      <label style="margin-top:8px">Más viejas de</label>
+      <div class="filtros">
+        <button type="button" class="filtro" onclick="borrarMasViejasDe(3)">3 meses</button>
+        <button type="button" class="filtro" onclick="borrarMasViejasDe(6)">6 meses</button>
+        <button type="button" class="filtro" onclick="borrarMasViejasDe(12)">1 año</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <div><label>Desde</label><input type="date" id="ventas-borrar-desde" onchange="actualizarConteoBorrar()"></div>
+        <div><label>Hasta</label><input type="date" id="ventas-borrar-hasta" onchange="actualizarConteoBorrar()"></div>
+      </div>
+      <small class="hint" id="borrar-conteo"></small>
+      <button class="btn danger full" id="borrar-btn" style="margin-top:10px" onclick="borrarPorPeriodo()">🗑 Borrar</button>
     </details>
   </div>
 
@@ -1533,29 +1546,144 @@ function descargarRespaldoVentasCSV(lista, nombreArchivo){
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
-function borrarVentasPorPeriodo(){
+function descargarRespaldoCotizacionesCSV(lista){
+  let csv = 'ID,Status,Referencia,Fecha,Productos,Total USD,Total Bs\n';
+  lista.forEach(function(c){
+    const resumenProd = (c.items||[]).map(function(it){
+      return tipoPiezaTexto(it.tipo)+' x'+(it.cantidad||1)+' ($'+Number(it.precio||0).toFixed(2)+'): '+camposConEtiqueta(it);
+    }).join(' | ');
+    const fila = [
+      c.id, c.status||'', c.referencia||'', fmtFecha(c.fecha),
+      resumenProd, Number(c.total||0).toFixed(2), (c.totalBs!=null?c.totalBs:'')
+    ];
+    csv += fila.map(function(x){ return '"'+String(x).replace(/"/g,'""')+'"'; }).join(',') + '\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'respaldo_cotizaciones_myriedesign_'+hoyISO()+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* Borrar registros viejos por período (en "Más opciones" de Ventas).
+   - cotizaciones: TODAS las cotizaciones del período (Negociando y ya Convertidas en venta),
+     por su campo "fecha". Se leen aparte porque cotizacionesCache solo tiene las "Cotizado".
+   - entregadas: ventas Enviado con saldo $0, por fechaVenta.
+   - vendido: ventas que no están entregadas (las del filtro "Vendido"), aunque deban plata;
+     la confirmación avisa cuántas deben y cuánto. */
+let tipoBorrar = 'cotizaciones';
+let borrarCotsCache = null;   // todas las cotizaciones; null = hay que leerlas de Firebase
+const BORRAR_TEXTOS = {
+  cotizaciones: { nombre:'cotizaciones', explicacion:'Borra todas las cotizaciones del período: las que siguen en Negociando y las que ya se convirtieron en venta (la venta no se toca). Antes se descarga un CSV de respaldo.' },
+  entregadas:   { nombre:'ventas entregadas y pagadas', explicacion:'Solo borra las ventas <b>Entregadas y pagadas completas</b> (saldo $0) vendidas en el período. Antes se descarga un CSV de respaldo (no incluye las fotos).' },
+  vendido:      { nombre:'ventas sin entregar', explicacion:'Borra las ventas que <b>no se entregaron</b> (Vendido y Fabricación) del período, <b>aunque deban plata</b>. Usalo para limpiar ventas abandonadas. Antes se descarga un CSV de respaldo con los abonos (no incluye las fotos).' }
+};
+function elegirTipoBorrar(tipo){
+  tipoBorrar = tipo;
+  document.querySelectorAll('#borrar-tipos .filtro').forEach(function(b){
+    b.classList.toggle('activo', b.dataset.tipo === tipo);
+  });
+  document.getElementById('borrar-explicacion').innerHTML = BORRAR_TEXTOS[tipo].explicacion;
+  if(tipo === 'cotizaciones') borrarCotsCache = null;   // releer por si hubo cambios
+  actualizarConteoBorrar();
+}
+/* "Más viejas de N meses": desde el principio hasta hoy menos N meses. */
+function borrarMasViejasDe(meses){
+  const d = new Date(hoyISO()+'T00:00:00');
+  d.setMonth(d.getMonth()-meses);
+  document.getElementById('ventas-borrar-desde').value = '';
+  document.getElementById('ventas-borrar-hasta').value = d.toISOString().slice(0,10);
+  actualizarConteoBorrar();
+}
+function enRangoBorrar(fecha, desde, hasta){
+  return !!fecha && (!desde || fecha >= desde) && fecha <= hasta;
+}
+/* Devuelve (en una promesa) la lista de registros a borrar según el tipo y las fechas. */
+function registrosABorrar(desde, hasta){
+  if(tipoBorrar === 'cotizaciones'){
+    const cargar = borrarCotsCache ? Promise.resolve(borrarCotsCache) :
+      db.collection('cotizaciones').get().then(function(snap){
+        borrarCotsCache = [];
+        snap.forEach(function(doc){ borrarCotsCache.push(Object.assign({id:doc.id}, doc.data())); });
+        return borrarCotsCache;
+      });
+    return cargar.then(function(lista){
+      return lista.filter(function(c){ return enRangoBorrar(c.fecha, desde, hasta); });
+    });
+  }
+  return Promise.resolve(todasLasVentas.filter(function(v){
+    if(!enRangoBorrar(v.fechaVenta, desde, hasta)) return false;
+    if(tipoBorrar === 'entregadas') return v.status === 'Enviado' && calcularSaldo(v) <= 0.004;
+    return v.status !== 'Enviado';   // vendido
+  }));
+}
+function actualizarConteoBorrar(){
   const desde = document.getElementById('ventas-borrar-desde').value;
   const hasta = document.getElementById('ventas-borrar-hasta').value;
-  if(!desde || !hasta){ alert('Seleccioná fecha desde y hasta.'); return; }
-  if(desde > hasta){ alert('La fecha "desde" no puede ser mayor que "hasta".'); return; }
-  // Solo ventas Entregadas y pagadas completas: nunca se borra una venta en curso o que deben.
-  const ventasFiltradas = todasLasVentas.filter(function(v){
-    return v.fechaVenta && v.fechaVenta >= desde && v.fechaVenta <= hasta &&
-      v.status === 'Enviado' && calcularSaldo(v) <= 0.004;
-  });
-  if(ventasFiltradas.length === 0){ alert('No hay ventas entregadas y pagadas en ese período.'); return; }
-  const cantidad = ventasFiltradas.length;
-  if(!confirm('¿Seguro que querés borrar las '+cantidad+' ventas entregadas y pagadas del período '+fmtFecha(desde)+' al '+fmtFecha(hasta)+'? Antes de borrar se va a descargar un CSV de respaldo con esas ventas (no incluye las fotos). Esta acción no se puede deshacer en Firebase.')) return;
-  if(!confirm('Confirmá de nuevo: se van a borrar '+cantidad+' ventas (clientes, abonos, fotos, todo) de ese período. ¿Continuar?')) return;
-  descargarRespaldoVentasCSV(ventasFiltradas);
-  const batch = db.batch();
-  ventasFiltradas.forEach(function(v){
-    batch.delete(db.collection('ventas').doc(v.id));
-  });
-  batch.commit().then(function(){
-    alert('Listo. Se descargó un CSV de respaldo (revisá tus descargas) y se borraron '+cantidad+' ventas entregadas y pagadas del período seleccionado.');
+  const conteo = document.getElementById('borrar-conteo');
+  const btn = document.getElementById('borrar-btn');
+  const nombre = BORRAR_TEXTOS[tipoBorrar].nombre;
+  if(!hasta){
+    conteo.textContent = 'Elegí un período (o tocá 3 meses / 6 meses / 1 año).';
+    btn.textContent = '🗑 Borrar '+nombre;
+    return;
+  }
+  const tipo = tipoBorrar;
+  registrosABorrar(desde, hasta).then(function(lista){
+    if(tipo !== tipoBorrar) return;   // cambiaron de tipo mientras se leía
+    let texto = 'Se van a borrar: '+lista.length+' '+nombre;
+    if(tipo === 'vendido'){
+      const conDeuda = lista.filter(function(v){ return calcularSaldo(v) > 0.004; });
+      if(conDeuda.length){
+        const deuda = conDeuda.reduce(function(s,v){ return s + calcularSaldo(v); }, 0);
+        texto += ' ('+conDeuda.length+' deben $'+fmtDolar(deuda)+')';
+      }
+    }
+    conteo.textContent = texto;
+    btn.textContent = '🗑 Borrar '+lista.length+' '+nombre;
   }).catch(function(err){
-    alert('Error borrando las ventas: '+err.message);
+    conteo.textContent = 'Error leyendo los registros: '+err.message;
+  });
+}
+function borrarPorPeriodo(){
+  const desde = document.getElementById('ventas-borrar-desde').value;
+  const hasta = document.getElementById('ventas-borrar-hasta').value;
+  if(!hasta){ alert('Seleccioná al menos la fecha "hasta" (o tocá 3 meses / 6 meses / 1 año).'); return; }
+  if(desde && desde > hasta){ alert('La fecha "desde" no puede ser mayor que "hasta".'); return; }
+  const tipo = tipoBorrar;
+  const nombre = BORRAR_TEXTOS[tipo].nombre;
+  const periodo = desde ? ('del '+fmtFecha(desde)+' al '+fmtFecha(hasta)) : ('hasta el '+fmtFecha(hasta));
+  registrosABorrar(desde, hasta).then(function(lista){
+    if(lista.length === 0){ alert('No hay '+nombre+' '+periodo+'.'); return; }
+    const cantidad = lista.length;
+    let aviso = '';
+    if(tipo === 'vendido'){
+      const conDeuda = lista.filter(function(v){ return calcularSaldo(v) > 0.004; });
+      if(conDeuda.length){
+        const deuda = conDeuda.reduce(function(s,v){ return s + calcularSaldo(v); }, 0);
+        aviso = '\n\nATENCIÓN: '+conDeuda.length+' de esas ventas tienen saldo pendiente por $'+fmtDolar(deuda)+' en total. Esa deuda se pierde de la app (queda solo en el CSV).';
+      }
+    }
+    if(!confirm('¿Seguro que querés borrar '+cantidad+' '+nombre+' '+periodo+'?'+aviso+'\n\nAntes de borrar se va a descargar un CSV de respaldo. Esta acción no se puede deshacer en Firebase.')) return;
+    if(!confirm('Confirmá de nuevo: se van a borrar '+cantidad+' '+nombre+'. ¿Continuar?')) return;
+    const coleccion = (tipo === 'cotizaciones') ? 'cotizaciones' : 'ventas';
+    if(tipo === 'cotizaciones') descargarRespaldoCotizacionesCSV(lista);
+    else descargarRespaldoVentasCSV(lista);
+    // Firestore acepta máximo 500 operaciones por batch: se borra por tandas.
+    const tandas = [];
+    for(let i = 0; i < lista.length; i += 500){
+      const batch = db.batch();
+      lista.slice(i, i+500).forEach(function(r){ batch.delete(db.collection(coleccion).doc(r.id)); });
+      tandas.push(batch.commit());
+    }
+    return Promise.all(tandas).then(function(){
+      borrarCotsCache = null;
+      alert('Listo. Se descargó un CSV de respaldo (revisá tus descargas) y se borraron '+cantidad+' '+nombre+'.');
+      actualizarConteoBorrar();
+    });
+  }).catch(function(err){
+    alert('Error borrando: '+err.message);
   });
 }
 
