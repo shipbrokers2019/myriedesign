@@ -2626,19 +2626,24 @@ function renderHoy(){
 }
 
 /* Mensajes que quedan escritos en WhatsApp desde la ficha de Hoy. */
-function primerNombre(nombre){
-  return String(nombre||'').trim().split(/\s+/)[0] || '';
+/* Saludo según la hora del dispositivo: días de 5:00 a 11:59, tardes de 12:00 a 18:59, noches el resto. */
+function saludoSegunHora(){
+  const h = new Date().getHours();
+  if(h >= 5 && h < 12) return 'Buenos días';
+  if(h >= 12 && h < 19) return 'Buenas tardes';
+  return 'Buenas noches';
 }
 function mensajeRecordatorioPago(v, saldo){
-  const nombre = primerNombre(v.nombre);
-  return 'Hola'+(nombre ? ' '+nombre : '')+', te escribimos de Myriedesign. '+
-    'Te recordamos que tienes un saldo pendiente de $'+saldo.toFixed(2)+
-    ' por tu pedido ('+productosCortos(v.items)+'). ¡Gracias!';
+  const nombre = String(v.nombre||'').trim();
+  return saludoSegunHora()+(nombre ? ', Sr./Sra. '+nombre : '')+'. Le escribimos de Myriedesign.\n\n'+
+    'Le recordamos que tiene un saldo pendiente de *$'+saldo.toFixed(2)+'* por su pedido ('+productosCortos(v.items)+').\n\n'+
+    'Quedamos atentos a su pago. ¡Muchas gracias!';
 }
 function mensajeSeguimientoCot(c){
-  return 'Hola, te escribimos de Myriedesign. ¿Pudiste pensar en la cotización que te enviamos ('+
-    productosCortos(c.items)+', total $'+Number(c.total||0).toFixed(2)+')? '+
-    'Cualquier duda o cambio que quieras hacer, estamos para ayudarte.';
+  return saludoSegunHora()+'. Le escribimos de Myriedesign.\n\n'+
+    'Queríamos saber si pudo revisar la cotización que le enviamos ('+
+    productosCortos(c.items)+', total *$'+Number(c.total||0).toFixed(2)+'*).\n\n'+
+    'Si tiene alguna duda o desea hacer algún cambio, con gusto le ayudamos. ¡Quedamos atentos!';
 }
 
 let fichaHoyActual = null;
