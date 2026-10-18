@@ -272,6 +272,26 @@
   .font-card.selected{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold);}
   .font-sample{margin:0;font-size:1.35rem;color:#000000;overflow-wrap:break-word;line-height:1.3;}
   .font-card-label{margin-top:4px;font-size:.65rem;color:#555555;}
+  /* Ventana de venta: resumen arriba, secciones plegables y botones fijos abajo. */
+  .v-resumen{background:var(--bg3);border-radius:12px;padding:12px;margin-bottom:10px;}
+  .v-res-nombre{font-weight:700;font-size:1.05rem;}
+  .v-res-contacto{color:var(--muted);font-size:.8rem;margin-top:2px;}
+  .v-res-montos{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-size:.82rem;color:var(--muted);}
+  .v-res-montos b{color:var(--text);}
+  .v-status-pills{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+  .st-pill{flex:1;border-radius:999px;padding:7px 10px;font:inherit;font-size:.8rem;font-weight:700;cursor:pointer;background:transparent;border:1px solid var(--border);color:var(--muted);}
+  .st-pill.activo[data-st="Aprobado"]{color:#39ff88;border-color:#39ff88;background:#39ff881a;box-shadow:0 0 8px #39ff8833;}
+  .st-pill.activo[data-st="Fabricacion"]{color:#ffb84d;border-color:#ffb84d;background:#ffb84d1a;box-shadow:0 0 8px #ffb84d33;}
+  .st-pill.activo[data-st="Enviado"]{color:#4de1ff;border-color:#4de1ff;background:#4de1ff1a;box-shadow:0 0 8px #4de1ff33;}
+  .v-sec{border:1px solid var(--border);border-radius:12px;margin-top:8px;padding:0 12px;}
+  .v-sec[open]{padding-bottom:12px;}
+  .v-sec summary{list-style:none;cursor:pointer;padding:12px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .v-sec summary::-webkit-details-marker{display:none;}
+  .v-sec summary::after{content:'▾';color:var(--muted);transition:transform .15s;}
+  .v-sec[open] summary::after{transform:rotate(180deg);}
+  .v-sec-tit{font-weight:700;color:var(--gold);white-space:nowrap;}
+  .v-sec-res{flex:1;color:var(--muted);font-size:.78rem;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .v-footer{position:sticky;bottom:-16px;background:var(--bg2);margin:12px -16px -16px;padding:10px 16px 16px;border-top:1px solid var(--border);}
   /* Venta bloqueada por status "Enviado": no se puede modificar salvo el status, guardar y eliminar. */
   .venta-bloqueada .x{display:none;}
   .venta-bloqueada .font-grid{pointer-events:none;opacity:.5;}
@@ -516,22 +536,43 @@
       <button class="close-x" onclick="cerrarModalVenta()">✕</button>
     </div>
     <div id="v-bloqueo-aviso" class="hidden" style="background:var(--danger);color:#fff;padding:8px 10px;border-radius:8px;font-size:.82rem;margin-bottom:10px">
-      🔒 Esta venta ya fue entregada y no se puede modificar. Si fue un error, cambiá el status (abajo) para desbloquearla.
+      🔒 Esta venta ya fue entregada y no se puede modificar. Si fue un error, cambiá el status (arriba) para desbloquearla.
     </div>
 
-    <div class="section-title">Datos del cliente</div>
-    <label>Nombre completo</label>
-    <input type="text" id="v-nombre" placeholder="Nombre y apellido">
-    <div class="row">
-      <div><label>Cédula / ID</label><input type="text" id="v-id"></div>
-      <div><label>Celular</label><input type="text" id="v-celular"></div>
+    <!-- Resumen fijo arriba: quién es, cuánto debe y en qué status está. -->
+    <div class="v-resumen">
+      <div class="v-res-nombre" id="v-res-nombre">(sin nombre)</div>
+      <div class="v-res-contacto" id="v-res-contacto"></div>
+      <div class="v-res-montos">
+        <span>Total <b id="v-res-total">$0.00</b></span>
+        <span>Abonado <b id="v-res-abonado" style="color:var(--success)">$0.00</b></span>
+        <span id="v-res-saldo-wrap">Debe <b id="v-res-saldo" style="color:var(--danger)">$0.00</b></span>
+      </div>
+      <div class="v-status-pills">
+        <button type="button" class="st-pill" data-st="Aprobado" onclick="elegirStatusVenta('Aprobado')">Vendido</button>
+        <button type="button" class="st-pill" data-st="Fabricacion" onclick="elegirStatusVenta('Fabricacion')">Fabricación</button>
+        <button type="button" class="st-pill" data-st="Enviado" onclick="elegirStatusVenta('Enviado')">Entregado</button>
+      </div>
+      <select id="v-status" class="hidden" onchange="onStatusChange()">
+        <option value="Aprobado">Vendido</option>
+        <option value="Fabricacion">Fabricación</option>
+        <option value="Enviado">Entregado</option>
+      </select>
     </div>
-    <label>Empresa de envío</label>
-    <input type="text" id="v-empresa-envio" placeholder="Ej: MRW, Zoom, Tealca...">
-    <label>Dirección de envío</label>
-    <textarea id="v-direccion-envio" rows="2"></textarea>
 
-    <div class="section-title">Piezas de la venta</div>
+    <!-- Secciones que se abren y cierran; cerradas muestran una línea de resumen. -->
+    <details class="v-sec" id="v-sec-cliente">
+      <summary><span class="v-sec-tit">👤 Cliente</span><span class="v-sec-res" id="v-sum-cliente"></span></summary>
+      <label>Nombre completo</label>
+      <input type="text" id="v-nombre" placeholder="Nombre y apellido">
+      <div class="row">
+        <div><label>Cédula / ID</label><input type="text" id="v-id"></div>
+        <div><label>Celular</label><input type="text" id="v-celular"></div>
+      </div>
+    </details>
+
+    <details class="v-sec" id="v-sec-piezas">
+      <summary><span class="v-sec-tit">💎 Piezas</span><span class="v-sec-res" id="v-sum-piezas"></span></summary>
     <div id="v-items-list"></div>
     <div class="total-line"><span>Total</span><span id="v-total">$0.00</span></div>
     <button id="v-btn-abrir-form-pieza" class="btn secondary full" style="margin-top:8px" onclick="abrirFormPiezaVenta()">+ Agregar otra pieza</button>
@@ -594,42 +635,50 @@
     <button id="v-btn-cancelar-pieza" class="btn secondary full" style="margin-top:6px" onclick="cancelarFormPiezaVenta()">Cancelar</button>
     </div>
 
-    <label>Total Bs. (opcional)</label>
-    <input type="number" id="v-total-bs" step="0.01" placeholder="0.00">
+    </details>
 
-    <div class="section-title">Fechas y status</div>
-    <div class="row">
-      <div><label>Fecha de venta</label><input type="date" id="v-fecha-venta" onchange="onFechaVentaChange()"></div>
-      <div><label>Entrega aprox.</label><input type="date" id="v-fecha-entrega"></div>
-    </div>
-    <label>Status</label>
-    <select id="v-status" onchange="onStatusChange()">
-      <option value="Aprobado">Vendido</option>
-      <option value="Fabricacion">Fabricación</option>
-      <option value="Enviado">Entregado</option>
-    </select>
-    <div id="v-fecha-envio-wrap" class="hidden">
-      <label>Fecha de envío</label>
-      <input type="date" id="v-fecha-envio">
-    </div>
-
-    <div class="section-title">Abonos</div>
-    <div class="recuadro-abono">
-      <div class="row">
-        <div><label>Fecha</label><input type="date" id="ab-fecha"></div>
-        <div><label>Tasa BCV</label><input type="number" id="ab-tasa" step="0.01" oninput="previsualizarAbonoBs()"></div>
+    <details class="v-sec" id="v-sec-pagos">
+      <summary><span class="v-sec-tit">💵 Pagos</span><span class="v-sec-res" id="v-sum-pagos"></span></summary>
+      <div id="v-abonos-list"></div>
+      <div class="total-line" style="color:var(--success)"><span>Abonado</span><span id="v-abonado">$0.00</span></div>
+      <div class="total-line" style="color:var(--danger)"><span>Saldo</span><span id="v-saldo">$0.00</span></div>
+      <button type="button" id="v-btn-registrar-pago" class="btn full btn-neon-verde" style="margin-top:8px" onclick="mostrarFormAbono(true)">+ Registrar pago</button>
+      <div id="v-abono-form" class="hidden">
+        <div class="recuadro-abono">
+          <div class="row">
+            <div><label>Fecha</label><input type="date" id="ab-fecha"></div>
+            <div><label>Tasa BCV</label><input type="number" id="ab-tasa" step="0.01" oninput="previsualizarAbonoBs()"></div>
+          </div>
+          <div class="row">
+            <div><label>Monto $</label><input type="number" id="ab-monto" step="0.01" oninput="previsualizarAbonoBs()"></div>
+            <div><label>Abono Bs. (auto)</label><input type="text" id="ab-monto-bs" readonly value="0.00"></div>
+          </div>
+        </div>
+        <button id="v-btn-agregar-abono" class="btn full" style="margin-top:8px" onclick="agregarAbono()">✓ Agregar abono</button>
+        <button type="button" class="btn secondary full" style="margin-top:6px" onclick="mostrarFormAbono(false)">Cancelar</button>
       </div>
-      <div class="row">
-        <div><label>Monto $</label><input type="number" id="ab-monto" step="0.01" oninput="previsualizarAbonoBs()"></div>
-        <div><label>Abono Bs. (auto)</label><input type="text" id="ab-monto-bs" readonly value="0.00"></div>
-      </div>
-    </div>
-    <button id="v-btn-agregar-abono" class="btn secondary full" style="margin-top:8px" onclick="agregarAbono()">+ Agregar abono</button>
-    <div id="v-abonos-list"></div>
-    <div class="total-line" style="color:var(--success)"><span>Abonado</span><span id="v-abonado">$0.00</span></div>
-    <div class="total-line" style="color:var(--danger)"><span>Saldo</span><span id="v-saldo">$0.00</span></div>
+      <label>Total Bs. (opcional)</label>
+      <input type="number" id="v-total-bs" step="0.01" placeholder="0.00">
+    </details>
 
-    <div class="section-title">Fotos</div>
+    <details class="v-sec" id="v-sec-envio">
+      <summary><span class="v-sec-tit">📦 Fechas y envío</span><span class="v-sec-res" id="v-sum-envio"></span></summary>
+      <div class="row">
+        <div><label>Fecha de venta</label><input type="date" id="v-fecha-venta" onchange="onFechaVentaChange()"></div>
+        <div><label>Entrega aprox.</label><input type="date" id="v-fecha-entrega"></div>
+      </div>
+      <label>Empresa de envío</label>
+      <input type="text" id="v-empresa-envio" placeholder="Ej: MRW, Zoom, Tealca...">
+      <label>Dirección de envío</label>
+      <textarea id="v-direccion-envio" rows="2"></textarea>
+      <div id="v-fecha-envio-wrap" class="hidden">
+        <label>Fecha de envío</label>
+        <input type="date" id="v-fecha-envio">
+      </div>
+    </details>
+
+    <details class="v-sec" id="v-sec-fotos">
+      <summary><span class="v-sec-tit">📷 Fotos</span><span class="v-sec-res" id="v-sum-fotos"></span></summary>
     <small class="hint">Tocá "Elegí una foto" y elegí sacar una foto o buscarla en la galería del celular. Se guarda comprimida (ocupa poco espacio) y la ve el otro celular también, sin gastar nada.</small>
 
     <label>Foto(s) de producto terminado</label>
@@ -646,9 +695,16 @@
     </div>
     <div id="v-fotos-guia"></div>
 
-    <button class="btn full" style="margin-top:16px;background:var(--success);color:#fff" onclick="guardarVenta()">✓ Guardar venta</button>
-    <button class="btn secondary full" style="margin-top:8px" onclick="verResumenVenta()">📋 Ver / copiar resumen</button>
-    <button id="v-btn-eliminar" class="btn danger full hidden" style="margin-top:8px" onclick="eliminarVenta()">Eliminar venta</button>
+    </details>
+
+    <!-- Botones fijos abajo -->
+    <div class="v-footer">
+      <button class="btn full" style="background:var(--success);color:#fff" onclick="guardarVenta()">✓ Guardar venta</button>
+      <div class="row" style="margin-top:6px">
+        <button class="btn secondary small" onclick="verResumenVenta()">📋 Resumen</button>
+        <button id="v-btn-eliminar" class="btn secondary small hidden" style="color:var(--danger)" onclick="eliminarVenta()">Eliminar venta</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1719,11 +1775,20 @@ function abrirFormVenta(id, cotizacionPrellenada){
   document.getElementById('ab-monto-bs').value = '0.00';
   document.getElementById('v-foto-producto-file').value = '';
   document.getElementById('v-foto-guia-file').value = '';
+  document.getElementById('ab-fecha').value = '';
+  mostrarFormAbono(false);
+  // Venta nueva (o convertida): Cliente abierto porque es lo que falta llenar, y Piezas
+  // si todavía no tiene. Venta existente: todo cerrado, solo se ve el resumen.
+  document.getElementById('v-sec-cliente').open = !id;
+  document.getElementById('v-sec-piezas').open = !id && ventaItems.length === 0;
+  ['v-sec-pagos','v-sec-envio','v-sec-fotos'].forEach(function(s){ document.getElementById(s).open = false; });
   onStatusChange();
   renderItemsVenta();
   renderAbonosVenta();
   renderFotosVenta();
+  actualizarResumenesVenta();
   document.getElementById('modal-venta').classList.remove('hidden');
+  document.querySelector('#modal-venta .modal-box').scrollTop = 0;
 }
 function cerrarModalVenta(){
   document.getElementById('modal-venta').classList.add('hidden');
@@ -1741,7 +1806,49 @@ function onStatusChange(){
   const st = sel.value;
   sel.style.color = STATUS_COLORES[st] || '';
   document.getElementById('v-fecha-envio-wrap').classList.toggle('hidden', st !== 'Enviado');
+  document.querySelectorAll('#modal-venta .st-pill').forEach(function(b){
+    b.classList.toggle('activo', b.dataset.st === st);
+  });
   actualizarBloqueoVenta();
+  actualizarResumenesVenta();
+}
+function elegirStatusVenta(st){
+  document.getElementById('v-status').value = st;
+  onStatusChange();
+}
+function mostrarFormAbono(abierto){
+  document.getElementById('v-abono-form').classList.toggle('hidden', !abierto);
+  document.getElementById('v-btn-registrar-pago').classList.toggle('hidden', abierto);
+  if(abierto){
+    if(!document.getElementById('ab-fecha').value) document.getElementById('ab-fecha').value = hoyISO();
+    document.getElementById('ab-monto').focus();
+  }
+}
+/* Resumen de arriba y líneas de cada sección cerrada; se refresca con cada cambio del formulario. */
+function actualizarResumenesVenta(){
+  const val = function(id){ return document.getElementById(id).value.trim(); };
+  const total = totalPiezasVenta();
+  const abonado = ventaAbonos.reduce(function(s,a){ return s + Number(a.monto||0); }, 0);
+  const saldo = total - abonado;
+  const piezas = ventaItems.length + ((piezaEditando !== null && piezaEditandoCopia) ? 1 : 0);
+  const fotos = (ventaFotos.productoFinal||[]).length + (ventaFotos.guiaEnvio||[]).length;
+
+  document.getElementById('v-res-nombre').textContent = val('v-nombre') || '(sin nombre)';
+  document.getElementById('v-res-contacto').textContent = [val('v-celular'), val('v-id')].filter(Boolean).join(' · ');
+  document.getElementById('v-res-total').textContent = '$'+total.toFixed(2);
+  document.getElementById('v-res-abonado').textContent = '$'+abonado.toFixed(2);
+  const debe = saldo > 0.004;
+  document.getElementById('v-res-saldo-wrap').innerHTML = debe
+    ? 'Debe <b style="color:var(--danger)">$'+saldo.toFixed(2)+'</b>'
+    : '<b style="color:var(--success)">Pagado</b>';
+
+  document.getElementById('v-sum-cliente').textContent = [val('v-nombre'), val('v-id'), val('v-celular')].filter(Boolean).join(' · ') || 'Falta completar';
+  document.getElementById('v-sum-piezas').textContent = piezas
+    ? piezas+' pieza'+(piezas===1?'':'s')+' · '+descripcionPiezas(ventaItems)
+    : 'Sin piezas';
+  document.getElementById('v-sum-pagos').textContent = ventaAbonos.length+' abono'+(ventaAbonos.length===1?'':'s')+' · '+(debe ? 'debe $'+saldo.toFixed(2) : 'pagado');
+  document.getElementById('v-sum-envio').textContent = [val('v-empresa-envio'), val('v-fecha-entrega') ? 'entrega aprox. '+fmtFecha(val('v-fecha-entrega')) : ''].filter(Boolean).join(' · ') || 'Sin datos de envío';
+  document.getElementById('v-sum-fotos').textContent = fotos+' foto'+(fotos===1?'':'s');
 }
 /* Una venta con status "Enviado" queda bloqueada: ya se despachó, no debería modificarse.
    Se deja siempre habilitado el Status (por si fue un error y hay que revertirlo), Guardar
@@ -1759,7 +1866,7 @@ function actualizarBloqueoVenta(){
     'v-item-bisuteria-tipo',
     'v-item-cantidad','v-item-precio','v-item-notas','v-btn-agregar-pieza','v-btn-abrir-form-pieza',
     'v-total-bs','v-fecha-venta','v-fecha-entrega','v-fecha-envio',
-    'ab-fecha','ab-tasa','ab-monto','v-btn-agregar-abono',
+    'ab-fecha','ab-tasa','ab-monto','v-btn-agregar-abono','v-btn-registrar-pago',
     'v-foto-producto-file','v-btn-agregar-foto-producto',
     'v-foto-guia-file','v-btn-agregar-foto-guia'
   ].forEach(function(id){
@@ -1907,6 +2014,7 @@ function agregarAbono(){
   ventaAbonos.push({ fecha: fecha, tasaBcv: tasa, monto: monto, montoBs: montoBs });
   document.getElementById('ab-monto').value = '';
   document.getElementById('ab-monto-bs').value = '0.00';
+  mostrarFormAbono(false);
   renderAbonosVenta();
 }
 function quitarAbono(idx){ ventaAbonos.splice(idx,1); renderAbonosVenta(); }
@@ -1943,6 +2051,7 @@ function recalcularSaldoModal(){
   const abonado = ventaAbonos.reduce(function(s,a){ return s + Number(a.monto); }, 0);
   document.getElementById('v-abonado').textContent = '$'+abonado.toFixed(2);
   document.getElementById('v-saldo').textContent = '$'+(total-abonado).toFixed(2);
+  actualizarResumenesVenta();
 }
 
 /* -------------------- 9) FOTOS (se suben desde el celular, se comprimen en el navegador
@@ -2007,7 +2116,11 @@ function renderFotosVenta(){
   document.getElementById('v-fotos-guia').innerHTML = ventaFotos.guiaEnvio.map(function(f, idx){
     return renderFotoItem(f, 'guiaEnvio', idx);
   }).join('');
+  actualizarResumenesVenta();
 }
+// El resumen de arriba se actualiza mientras se escribe (nombre, celular, envío...).
+document.getElementById('modal-venta').addEventListener('input', actualizarResumenesVenta);
+document.getElementById('modal-venta').addEventListener('change', actualizarResumenesVenta);
 
 /* -------------------- 10) GUARDAR / ELIMINAR VENTA -------------------- */
 function guardarVenta(){
