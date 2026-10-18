@@ -214,6 +214,7 @@
   .pill.debe{color:#ff4d6d;border-color:#ff4d6d80;background:#ff4d6d1a;box-shadow:0 0 8px #ff4d6d33;}
   .pill.negociando{color:#ffe94d;border-color:#ffe94d80;background:#ffe94d1a;box-shadow:0 0 8px #ffe94d33;}
   .pill.entregado{color:#4de1ff;border-color:#4de1ff80;background:#4de1ff1a;box-shadow:0 0 8px #4de1ff33;}
+  .pill.fabricacion{color:#ffb84d;border-color:#ffb84d80;background:#ffb84d1a;box-shadow:0 0 8px #ffb84d33;}
   .pill.naranja{color:#ff9f1c;border-color:#ff9f1c80;background:#ff9f1c1a;box-shadow:0 0 8px #ff9f1c33;}
   .pill.etapa{color:var(--muted);border-color:var(--border);}
   .pill.wa{color:#25D366;border-color:#25D36680;background:#25D3661a;}
@@ -1682,8 +1683,10 @@ function tarjetaCliente(r, pillsExtra, accion, derecha){
   if(r.tipo === 'cot'){
     pills += '<span class="pill negociando">Negociando</span>';
   } else {
-    pills += r.status === 'Enviado' ? '<span class="pill entregado">Entregado</span>' : '<span class="pill vendido">Vendido</span>';
-    if(r.status === 'Fabricacion') pills += '<span class="pill etapa">'+statusTexto(r.status)+'</span>';
+    // Una sola pastilla con el status actual: Vendido, Fabricación o Entregado.
+    if(r.status === 'Enviado') pills += '<span class="pill entregado">Entregado</span>';
+    else if(r.status === 'Fabricacion') pills += '<span class="pill fabricacion">Fabricación</span>';
+    else pills += '<span class="pill vendido">Vendido</span>';
     if(r.saldo > 0.004) pills += '<span class="pill debe">Debe $'+r.saldo.toFixed(2)+'</span>';
   }
   pills += (pillsExtra || '') + pillWhatsApp(numeroWhatsApp(r.celular));
