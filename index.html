@@ -548,7 +548,7 @@
         <span>Abonado <b id="v-res-abonado" style="color:var(--success)">$0.00</b></span>
         <span id="v-res-saldo-wrap">Debe <b id="v-res-saldo" style="color:var(--danger)">$0.00</b></span>
       </div>
-      <div class="v-status-pills">
+      <div class="v-status-pills" id="v-status-pills">
         <button type="button" class="st-pill" data-st="Aprobado" onclick="elegirStatusVenta('Aprobado')">Vendido</button>
         <button type="button" class="st-pill" data-st="Fabricacion" onclick="elegirStatusVenta('Fabricacion')">Fabricación</button>
         <button type="button" class="st-pill" data-st="Enviado" onclick="elegirStatusVenta('Enviado')">Entregado</button>
@@ -1748,7 +1748,9 @@ function abrirFormVenta(id, cotizacionPrellenada){
     if(cotizacionPrellenada){
       // Todas las piezas de la cotización pasan directo a la lista de la venta.
       ventaItems = JSON.parse(JSON.stringify(cotizacionPrellenada.items || []));
-      document.getElementById('v-celular').value = cotizacionPrellenada.referencia || '';
+      // La referencia de la cotización va a Celular si trae un número, y si no a Nombre.
+      const ref = cotizacionPrellenada.referencia || '';
+      document.getElementById(numeroWhatsApp(ref) ? 'v-celular' : 'v-nombre').value = ref;
       if(cotizacionPrellenada.totalBs !== undefined && cotizacionPrellenada.totalBs !== null){
         document.getElementById('v-total-bs').value = cotizacionPrellenada.totalBs;
       }
@@ -1779,6 +1781,8 @@ function abrirFormVenta(id, cotizacionPrellenada){
   mostrarFormAbono(false);
   // Venta nueva (o convertida): Cliente abierto porque es lo que falta llenar, y Piezas
   // si todavía no tiene. Venta existente: todo cerrado, solo se ve el resumen.
+  // El status solo se puede cambiar en una venta ya creada; una nueva arranca en Vendido.
+  document.getElementById('v-status-pills').classList.toggle('hidden', !id);
   document.getElementById('v-sec-cliente').open = !id;
   document.getElementById('v-sec-piezas').open = !id && ventaItems.length === 0;
   ['v-sec-pagos','v-sec-envio','v-sec-fotos'].forEach(function(s){ document.getElementById(s).open = false; });
