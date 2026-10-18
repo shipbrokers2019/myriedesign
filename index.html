@@ -429,7 +429,8 @@
       <label>Notas</label>
       <textarea id="cot-notas" rows="2"></textarea>
 
-      <button class="btn full btn-neon-verde" style="margin-top:8px" onclick="agregarItemCotizacion()">+ Agregar pieza a la cotización</button>
+      <button class="btn full btn-neon-verde" id="cot-btn-agregar-pieza" style="margin-top:8px" onclick="agregarItemCotizacion()">+ Agregar pieza a la cotización</button>
+      <button class="btn secondary full hidden" id="cot-btn-cancelar-pieza" style="margin-top:6px" onclick="cancelarEdicionPiezaCot()">Cancelar edición de la pieza</button>
 
       <div id="cot-items-list"></div>
       <div class="total-line"><span>Total</span><span id="cot-total">$0.00</span></div>
@@ -867,7 +868,8 @@ let ventaItems = [];            // items de la venta en el modal
 let ventaAbonos = [];           // abonos de la venta en el modal
 let abonosRegistrados = 0;      // cuántos de ventaAbonos ya venían registrados (no se pueden quitar)
 let ventaFotos = { productoFinal: [], guiaEnvio: [] };
-let cotizacionOrigenId = null;  // si la venta viene de una cotización, guardamos su id
+let cotizacionOrigenId = null;
+let cotPiezaEditando = null;    // índice de la pieza del Cotizador que se está editando (null = ninguna)  // si la venta viene de una cotización, guardamos su id
 // Tipografía elegida por cada campo de texto (nombre/adic/frontal/posterior) en cada formulario (cot / v)
 let fuentesSel = { cotNombre:'', cotAdic:'', cotFrontal:'', cotPosterior:'', vNombre:'', vAdic:'', vFrontal:'', vPosterior:'' };
 // Tipo de pieza activo en cada formulario: 'personalizado' o 'grabado'
@@ -1144,23 +1146,61 @@ function agregarItemCotizacion(){
     item.tipografiaFrontal = fuentesSel.cotFrontal || '';
     item.tipografiaPosterior = fuentesSel.cotPosterior || '';
   }
-  cotizacionItems.push(item);
+  if(cotPiezaEditando !== null){
+    cotizacionItems[cotPiezaEditando] = item;   // reemplaza la pieza que se estaba editando
+  } else {
+    cotizacionItems.push(item);
+  }
+  cotPiezaEditando = null;
   limpiarCamposPiezaCot();
+  actualizarBotonesPiezaCot();
   renderItemsCotizacion();
+}
+/* Edición de una pieza ya agregada: la pieza queda en la lista (marcada) mientras se
+   corrige arriba; "Guardar cambios de la pieza" la reemplaza y "Cancelar" la deja igual.
+   El índice en edición está en cotPiezaEditando (declarado con las demás variables globales). */
+function actualizarBotonesPiezaCot(){
+  const editando = cotPiezaEditando !== null;
+  document.getElementById('cot-btn-agregar-pieza').textContent = editando
+    ? '✓ Guardar cambios de la pieza '+(cotPiezaEditando+1) : '+ Agregar pieza a la cotización';
+  document.getElementById('cot-btn-cancelar-pieza').classList.toggle('hidden', !editando);
+}
+function cancelarEdicionPiezaCot(){
+  cotPiezaEditando = null;
+  limpiarCamposPiezaCot();
+  actualizarBotonesPiezaCot();
+  renderItemsCotizacion();
+}
+function avisarSiEditandoPiezaCot(){
+  if(cotPiezaEditando === null) return false;
+  alert('Estás editando una pieza: tocá "Guardar cambios de la pieza" o "Cancelar edición de la pieza" primero.');
+  return true;
 }
 function renderItemsCotizacion(){
   const el = document.getElementById('cot-items-list');
   el.innerHTML = cotizacionItems.map(function(it, idx){
     const subtotal = it.precio * it.cantidad;
     const campos = camposConEtiquetaLineas(it);
-    return '<div class="item-row item-row-pieza"><span onclick="editarItemCotizacion('+idx+')" style="cursor:pointer">'+(campos?campos+'<br>':'')+'Cantidad: '+it.cantidad+'<br>$'+subtotal.toFixed(2)+'</span>'+
-      '<span class="x" onclick="quitarItemCotizacion('+idx+')">✕</span></div>';
+    const editando = idx === cotPiezaEditando;
+    return '<div class="item-row item-row-pieza" style="flex-direction:column;align-items:stretch'+(editando?';border:1px solid #39ff88':'')+'">'+
+      '<div style="font-weight:700">Pieza '+(idx+1)+(editando?' <span style="color:#39ff88">· editando arriba</span>':'')+'</div>'+
+      '<div style="line-height:1.5;margin-top:4px">'+(campos?campos+'<br>':'')+'Cantidad: '+it.cantidad+'<br>$'+subtotal.toFixed(2)+'</div>'+
+      '<div class="row" style="margin-top:8px">'+
+        '<button type="button" class="btn secondary small" onclick="editarItemCotizacion('+idx+')">✏️ Editar</button>'+
+        '<button type="button" class="btn secondary small" style="color:var(--danger)" onclick="quitarItemCotizacion('+idx+')">✕ Quitar</button>'+
+      '</div></div>';
   }).join('');
   const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
   document.getElementById('cot-total').textContent = '$'+total.toFixed(2);
   actualizarMontosCotizacion();
 }
-function quitarItemCotizacion(idx){ cotizacionItems.splice(idx,1); renderItemsCotizacion(); }
+function quitarItemCotizacion(idx){
+  if(idx === cotPiezaEditando){ cotPiezaEditando = null; limpiarCamposPiezaCot(); }
+  else if(cotPiezaEditando !== null && idx < cotPiezaEditando){ cotPiezaEditando--; }
+  cotizacionItems.splice(idx,1);
+  actualizarBotonesPiezaCot();
+  renderItemsCotizacion();
+}
 /* Rellena "Detalle de la pieza" del Cotizador con los datos de una pieza ya
    agregada, para poder corregirla (ej. un precio mal puesto) sin reescribir
    todo. Usada por editarItemCotizacion(). */
@@ -1194,9 +1234,12 @@ function precargarPiezaCotizacion(it){
 function editarItemCotizacion(idx){
   const it = cotizacionItems[idx];
   if(!it) return;
+  limpiarCamposPiezaCot();
   precargarPiezaCotizacion(it);
-  cotizacionItems.splice(idx,1);
+  cotPiezaEditando = idx;
+  actualizarBotonesPiezaCot();
   renderItemsCotizacion();
+  document.getElementById('cot-cadena').scrollIntoView({ behavior:'smooth', block:'center' });
 }
 
 /* Si el usuario escribe un monto distinto en "Monto a abonar", dejamos de
@@ -1222,6 +1265,7 @@ function actualizarMontosCotizacion(){
 }
 
 function generarMensajeCotizacion(){
+  if(avisarSiEditandoPiezaCot()) return;
   if(cotizacionItems.length === 0){ alert('Agregá al menos una pieza.'); return; }
   let msg = '';
   cotizacionItems.forEach(function(it){
@@ -1298,6 +1342,7 @@ function linkWhatsApp(numero, mensaje){
 }
 
 function guardarCotizacion(){
+  if(avisarSiEditandoPiezaCot()) return;
   if(cotizacionItems.length === 0){ alert('Agregá al menos una pieza antes de guardar.'); return; }
   const referencia = document.getElementById('cot-referencia').value.trim();
   const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
@@ -1339,6 +1384,9 @@ function editarCotizacionPendiente(id){
   if(!c) return;
   cotizacionEditandoId = id;
   cotizacionItems = (c.items || []).slice();
+  cotPiezaEditando = null;
+  limpiarCamposPiezaCot();
+  actualizarBotonesPiezaCot();
   renderItemsCotizacion();
   document.getElementById('cot-referencia').value = c.referencia || '';
   document.getElementById('cot-fecha').value = c.fecha || hoyISO();
@@ -1355,6 +1403,9 @@ function cancelarEdicionCotizacion(){
   cotizacionEditandoId = null;
   abonarManual = false;
   cotizacionItems = [];
+  cotPiezaEditando = null;
+  limpiarCamposPiezaCot();
+  actualizarBotonesPiezaCot();
   renderItemsCotizacion();
   document.getElementById('cot-referencia').value = '';
   document.getElementById('cot-fecha').value = hoyISO();
