@@ -1455,7 +1455,8 @@ function generarMensajeCotizacion(){
   msg += 'Realizamos envios por:\n'+ENVIOS_EMPRESAS+'\n\n';
   msg += 'Fecha: '+fmtFecha(fecha)+'\n';
   msg += 'Tasa BCV: '+fmtDolar(tasa)+'\n\n';
-  msg += 'Monto en Bs. Valido hasta 5:00pm de hoy';
+  msg += 'Monto en Bs. Valido hasta 5:00pm de hoy\n\n';
+  msg += 'La diferencia del '+(100-pct)+'% se cancela inmediatamente al terminar su pieza o en un plazo máximo de 5 días después de terminada esta.';
 
   document.getElementById('cot-mensaje').value = msg;
   const wrap = document.getElementById('cot-mensaje-wrap');
@@ -1467,7 +1468,9 @@ function copiarMensajeCotizacion(){ copiarTexto(document.getElementById('cot-men
 function enviarWhatsAppCotizacion(){
   const msg = document.getElementById('cot-mensaje').value;
   if(!msg){ alert('Generá el mensaje primero.'); return; }
-  window.open(linkWhatsApp('', msg.normalize('NFC')), '_blank');
+  // Igual que en Hoy: si la referencia tiene un número de teléfono, abre directo el chat de ese cliente.
+  const numero = numeroWhatsApp(document.getElementById('cot-referencia').value);
+  window.open(linkWhatsApp(numero, msg.normalize('NFC')), '_blank');
 }
 /* Link para abrir un chat de WhatsApp. En el celular usa wa.me (abre la app); en la
    compu va directo a WhatsApp Web, porque wa.me ahí se queda en una página intermedia
