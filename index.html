@@ -215,6 +215,7 @@
   .pill.negociando{color:#ffe94d;border-color:#ffe94d80;background:#ffe94d1a;box-shadow:0 0 8px #ffe94d33;}
   .pill.entregado{color:#4de1ff;border-color:#4de1ff80;background:#4de1ff1a;box-shadow:0 0 8px #4de1ff33;}
   .pill.fabricacion{color:#ffb84d;border-color:#ffb84d80;background:#ffb84d1a;box-shadow:0 0 8px #ffb84d33;}
+  .pill.listo{color:#c77dff;border-color:#c77dff80;background:#c77dff1a;box-shadow:0 0 8px #c77dff33;}
   .pill.naranja{color:#ff9f1c;border-color:#ff9f1c80;background:#ff9f1c1a;box-shadow:0 0 8px #ff9f1c33;}
   .pill.etapa{color:var(--muted);border-color:var(--border);}
   .pill.wa{color:#25D366;border-color:#25D36680;background:#25D3661a;}
@@ -283,6 +284,7 @@
   .st-pill{flex:1;border-radius:999px;padding:7px 10px;font:inherit;font-size:.8rem;font-weight:700;cursor:pointer;background:transparent;border:1px solid var(--border);color:var(--muted);}
   .st-pill.activo[data-st="Aprobado"]{color:#39ff88;border-color:#39ff88;background:#39ff881a;box-shadow:0 0 8px #39ff8833;}
   .st-pill.activo[data-st="Fabricacion"]{color:#ffb84d;border-color:#ffb84d;background:#ffb84d1a;box-shadow:0 0 8px #ffb84d33;}
+  .st-pill.activo[data-st="Listo"]{color:#c77dff;border-color:#c77dff;background:#c77dff1a;box-shadow:0 0 8px #c77dff33;}
   .st-pill.activo[data-st="Enviado"]{color:#4de1ff;border-color:#4de1ff;background:#4de1ff1a;box-shadow:0 0 8px #4de1ff33;}
   .v-sec{border:1px solid var(--border);border-radius:12px;margin-top:8px;padding:0 12px;}
   .v-sec[open]{padding-bottom:12px;}
@@ -527,6 +529,7 @@
         <button type="button" class="filtro" data-filtro="negociando" onclick="elegirFiltroClientes('negociando')">Negociando</button>
         <button type="button" class="filtro" data-filtro="vendido" onclick="elegirFiltroClientes('vendido')">Vendido</button>
         <button type="button" class="filtro" data-filtro="fabricacion" onclick="elegirFiltroClientes('fabricacion')">Fabricación</button>
+        <button type="button" class="filtro" data-filtro="listo" onclick="elegirFiltroClientes('listo')">Listo</button>
         <button type="button" class="filtro" data-filtro="entregado" onclick="elegirFiltroClientes('entregado')">Entregado</button>
       </div>
       <div class="row clientes-fechas">
@@ -596,11 +599,13 @@
       <div class="v-status-pills" id="v-status-pills">
         <button type="button" class="st-pill" data-st="Aprobado" onclick="elegirStatusVenta('Aprobado')">Vendido</button>
         <button type="button" class="st-pill" data-st="Fabricacion" onclick="elegirStatusVenta('Fabricacion')">Fabricación</button>
+        <button type="button" class="st-pill" data-st="Listo" onclick="elegirStatusVenta('Listo')">Listo</button>
         <button type="button" class="st-pill" data-st="Enviado" onclick="elegirStatusVenta('Enviado')">Entregado</button>
       </div>
       <select id="v-status" class="hidden" onchange="onStatusChange()">
         <option value="Aprobado">Vendido</option>
         <option value="Fabricacion">Fabricación</option>
+        <option value="Listo">Listo</option>
         <option value="Enviado">Entregado</option>
       </select>
     </div>
@@ -744,6 +749,14 @@
 
     <!-- Botones fijos abajo -->
     <div class="v-footer">
+      <!-- Solo con status Listo: avisar al cliente; compartir/descargar solo si hay fotos de producto terminado. -->
+      <div id="v-listo-acciones" class="hidden" style="margin-bottom:6px">
+        <button class="btn full" style="background:#25D366;color:#fff" onclick="avisarListo('modal')">💬 Avisar que está listo</button>
+        <div class="row" id="v-listo-fotos" style="margin-top:6px">
+          <button class="btn secondary small" onclick="compartirListo('modal')">📤 Compartir foto + mensaje</button>
+          <button class="btn secondary small" onclick="descargarFotosListo('modal')">📥 Descargar foto</button>
+        </div>
+      </div>
       <button class="btn full" style="background:var(--success);color:#fff" onclick="guardarVenta()">✓ Guardar venta</button>
       <div class="row" style="margin-top:6px">
         <button class="btn secondary small" onclick="verResumenVenta()">📋 Resumen</button>
@@ -1662,7 +1675,7 @@ let borrarCotsCache = null;   // todas las cotizaciones; null = hay que leerlas 
 const BORRAR_TEXTOS = {
   cotizaciones: { nombre:'cotizaciones', explicacion:'Borra todas las cotizaciones del período: las que siguen en Negociando y las que ya se convirtieron en venta (la venta no se toca). Antes se descarga un CSV de respaldo.' },
   entregadas:   { nombre:'ventas entregadas y pagadas', explicacion:'Solo borra las ventas <b>Entregadas y pagadas completas</b> (saldo $0) vendidas en el período. Antes se descarga un CSV de respaldo (no incluye las fotos).' },
-  vendido:      { nombre:'ventas sin entregar', explicacion:'Borra las ventas que <b>no se entregaron</b> (Vendido y Fabricación) del período, <b>aunque deban plata</b>. Usalo para limpiar ventas abandonadas. Antes se descarga un CSV de respaldo con los abonos (no incluye las fotos).' }
+  vendido:      { nombre:'ventas sin entregar', explicacion:'Borra las ventas que <b>no se entregaron</b> (Vendido, Fabricación y Listo) del período, <b>aunque deban plata</b>. Usalo para limpiar ventas abandonadas. Antes se descarga un CSV de respaldo con los abonos (no incluye las fotos).' }
 };
 function elegirTipoBorrar(tipo){
   tipoBorrar = tipo;
@@ -1778,9 +1791,6 @@ function cargarVentas(){
     todasLasVentas = [];
     snap.forEach(function(doc){
       const v = Object.assign({id:doc.id}, doc.data());
-      // El status "Listo para envío" ya no existe: las ventas viejas con ese status se
-      // tratan como "Fabricación" (y quedan así guardadas la próxima vez que se guarden).
-      if(v.status === 'Listo') v.status = 'Fabricacion';
       todasLasVentas.push(v);
     });
     todasLasVentas.sort(function(a,b){ return (b.fechaVenta||'').localeCompare(a.fechaVenta||''); });
@@ -1791,7 +1801,7 @@ function cargarVentas(){
 function statusClase(status){ return status === 'Fabricacion' ? 'Fabricacion' : status; }
 function statusTexto(status){
   // En la base se siguen guardando "Aprobado" y "Enviado"; solo cambia el texto que se ve.
-  const map = { Aprobado:'Vendido', Fabricacion:'Fabricación', Listo:'Listo para envío', Enviado:'Entregado' };
+  const map = { Aprobado:'Vendido', Fabricacion:'Fabricación', Listo:'Listo', Enviado:'Entregado' };
   return map[status] || status;
 }
 function calcularSaldo(venta){
@@ -1852,6 +1862,7 @@ function renderClientesLista(){
       if(filtroClientes === 'vendido' && v.status === 'Enviado') return;
       if(filtroClientes === 'entregado' && v.status !== 'Enviado') return;
       if(filtroClientes === 'fabricacion' && v.status !== 'Fabricacion') return;
+      if(filtroClientes === 'listo' && v.status !== 'Listo') return;
       registros.push(registroDeVenta(v));
     });
   }
@@ -1896,9 +1907,10 @@ function tarjetaCliente(r, pillsExtra, accion, derecha){
   if(r.tipo === 'cot'){
     pills += '<span class="pill negociando">Negociando</span>';
   } else {
-    // Una sola pastilla con el status actual: Vendido, Fabricación o Entregado.
+    // Una sola pastilla con el status actual: Vendido, Fabricación, Listo o Entregado.
     if(r.status === 'Enviado') pills += '<span class="pill entregado">Entregado</span>';
     else if(r.status === 'Fabricacion') pills += '<span class="pill fabricacion">Fabricación</span>';
+    else if(r.status === 'Listo') pills += '<span class="pill listo">Listo</span>';
     else pills += '<span class="pill vendido">Vendido</span>';
     if(r.saldo > 0.004) pills += '<span class="pill debe">Debe $'+r.saldo.toFixed(2)+'</span>';
   }
@@ -2069,6 +2081,92 @@ function actualizarResumenesVenta(){
   document.getElementById('v-sum-pagos').textContent = ventaAbonos.length+' abono'+(ventaAbonos.length===1?'':'s')+' · '+(debe ? 'debe $'+saldo.toFixed(2) : 'pagado');
   document.getElementById('v-sum-envio').textContent = [val('v-empresa-envio'), val('v-fecha-entrega') ? 'entrega aprox. '+fmtFecha(val('v-fecha-entrega')) : ''].filter(Boolean).join(' · ') || 'Sin datos de envío';
   document.getElementById('v-sum-fotos').textContent = fotos+' foto'+(fotos===1?'':'s');
+  // Botones para avisar al cliente que su pedido está listo.
+  const listo = document.getElementById('v-status').value === 'Listo';
+  document.getElementById('v-listo-acciones').classList.toggle('hidden', !listo);
+  document.getElementById('v-listo-fotos').classList.toggle('hidden', fotosDataUrl(ventaFotos.productoFinal).length === 0);
+}
+
+/* -------------------- AVISO "PEDIDO LISTO" -------------------- */
+/* fuente: 'modal' = la venta abierta en el formulario (con lo que haya sin guardar),
+   o el id de una venta guardada (ficha de Hoy). */
+function datosAvisoListo(fuente){
+  if(fuente === 'modal'){
+    const abonado = ventaAbonos.reduce(function(s,a){ return s + Number(a.monto||0); }, 0);
+    return {
+      nombre: document.getElementById('v-nombre').value.trim(),
+      celular: document.getElementById('v-celular').value.trim(),
+      items: ventaItems,
+      saldo: totalPiezasVenta() - abonado,
+      fotos: ventaFotos.productoFinal
+    };
+  }
+  const v = todasLasVentas.find(function(x){ return x.id === fuente; });
+  if(!v) return null;
+  return { nombre: String(v.nombre||'').trim(), celular: v.celular, items: v.items,
+    saldo: calcularSaldo(v), fotos: (v.fotos && v.fotos.productoFinal) || [] };
+}
+// Solo las fotos guardadas dentro de la venta (las viejas que eran links no se pueden adjuntar).
+function fotosDataUrl(lista){
+  return (lista||[]).filter(function(f){ return f && typeof f === 'object' && f.data; }).map(function(f){ return f.data; });
+}
+function mensajePedidoListo(d){
+  let msg = saludoSegunHora()+(d.nombre ? ', Sr./Sra. '+d.nombre : '')+'. Le escribimos de Myriedesign.\n\n'+
+    '¡Su pedido está listo para ser entregado! ✨ Le anexamos una foto de su pieza; esperamos que sea de su agrado.\n\n'+
+    'Pedido: '+productosCortos(d.items)+'\n\n';
+  if(d.saldo > 0.004){
+    msg += 'Diferencia restante: *$'+d.saldo.toFixed(2)+'*\n';
+    if(tasaBcvDia) msg += 'En bolívares: *Bs. '+fmtBs(d.saldo*tasaBcvDia)+'*\n';
+    msg += '\n'+PAGO_INFO.metodo+'\n'+PAGO_INFO.banco+'\nC.I. '+PAGO_INFO.ci+'\n'+PAGO_INFO.telefono+'\n\n';
+    if(tasaBcvDia) msg += 'Monto en bolívares válido hasta las 5:00 pm del día de hoy.\n\n';
+  } else {
+    msg += 'Su pedido ya se encuentra pagado en su totalidad.\n\n';
+  }
+  return msg + '¡Muchas gracias por su compra!';
+}
+function avisarListo(fuente){
+  const d = datosAvisoListo(fuente);
+  if(!d) return;
+  window.open(linkWhatsApp(numeroWhatsApp(d.celular), mensajePedidoListo(d).normalize('NFC')), '_blank');
+}
+function archivosFotosListo(d){
+  const base = 'pedido_'+(d.nombre || 'cliente').replace(/[^\wáéíóúñÁÉÍÓÚÑ]+/g,'_');
+  return Promise.all(fotosDataUrl(d.fotos).map(function(src, i){
+    return fetch(src).then(function(r){ return r.blob(); }).then(function(blob){
+      const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg','jpg');
+      return new File([blob], base+'_'+(i+1)+'.'+ext, { type: blob.type || 'image/jpeg' });
+    });
+  }));
+}
+/* Menú de compartir del celular con las fotos y el mensaje juntos (hay que elegir el contacto). */
+function compartirListo(fuente){
+  const d = datosAvisoListo(fuente);
+  if(!d) return;
+  archivosFotosListo(d).then(function(files){
+    if(!files.length){ alert('Esta venta no tiene fotos de producto terminado.'); return; }
+    if(!navigator.canShare || !navigator.canShare({ files: files })){
+      alert('Este navegador no permite compartir fotos. Usá "Descargar foto" y después "Avisar que está listo".');
+      return;
+    }
+    return navigator.share({ files: files, text: mensajePedidoListo(d).normalize('NFC') });
+  }).catch(function(err){
+    if(err && err.name === 'AbortError') return;   // cerraron el menú de compartir
+    alert('No se pudo compartir: '+err.message);
+  });
+}
+function descargarFotosListo(fuente){
+  const d = datosAvisoListo(fuente);
+  if(!d) return;
+  archivosFotosListo(d).then(function(files){
+    if(!files.length){ alert('Esta venta no tiene fotos de producto terminado.'); return; }
+    files.forEach(function(file){
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url; a.download = file.name;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    });
+  }).catch(function(err){ alert('No se pudo descargar: '+err.message); });
 }
 /* Una venta con status "Enviado" queda bloqueada: ya se despachó, no debería modificarse.
    Se deja siempre habilitado el Status (por si fue un error y hay que revertirlo), Guardar
@@ -2701,7 +2799,15 @@ function abrirFichaHoy(tipo, id){
       lineaFicha('Saldo', '<span class="'+(saldo>0.004?'saldo-pos':'saldo-zero')+'">$'+saldo.toFixed(2)+'</span>')+
       '<div style="margin-top:8px;color:var(--muted)">'+(v.items||[]).map(resumenPiezaLineas).join('<br><br>')+'</div>'+
       '</div>'+
-      botonesContacto(numeroWhatsApp(v.celular), saldo > 0.004 ? mensajeRecordatorioPago(v, saldo) : '');
+      (v.status === 'Listo'
+        ? botonesContacto(numeroWhatsApp(v.celular), mensajePedidoListo(datosAvisoListo(v.id)))+
+          (fotosDataUrl(v.fotos && v.fotos.productoFinal).length
+            ? '<div class="row" style="margin-top:6px">'+
+                '<button class="btn secondary small" onclick="compartirListo(\''+v.id+'\')">📤 Compartir foto + mensaje</button>'+
+                '<button class="btn secondary small" onclick="descargarFotosListo(\''+v.id+'\')">📥 Descargar foto</button>'+
+              '</div>'
+            : '')
+        : botonesContacto(numeroWhatsApp(v.celular), saldo > 0.004 ? mensajeRecordatorioPago(v, saldo) : ''));
   }
   cuerpo.innerHTML = html;
   fichaHoyActual = { tipo: tipo, id: id };
