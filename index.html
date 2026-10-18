@@ -196,6 +196,35 @@
   .badge.Fabricacion{background:#e0a94c33;color:#e0a94c;}
   .badge.Listo{background:#9b6ce033;color:#c39bff;}
   .badge.Enviado{background:#4caf7d33;color:#4caf7d;}
+  /* Lista "Clientes" (ventas + cotizaciones) con filtros y pastillas de color */
+  .clientes-buscar{margin-top:8px;}
+  .filtros{display:flex;gap:8px;overflow-x:auto;margin:10px 0 6px;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .filtros::-webkit-scrollbar{display:none;}
+  .filtro{flex:0 0 auto;border-radius:999px;padding:7px 14px;font-size:.82rem;background:var(--bg3);border:1px solid var(--border);color:var(--text);cursor:pointer;}
+  .filtro.activo{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:700;}
+  .cli-card{background:var(--bg3);border-radius:14px;padding:12px 14px;margin:8px 0;cursor:pointer;}
+  .cli-card .fila{display:flex;justify-content:space-between;gap:10px;}
+  .cli-card .nombre{font-weight:700;}
+  .cli-card .monto{font-weight:700;white-space:nowrap;}
+  .cli-card .desc{color:var(--muted);font-size:.8rem;margin-top:4px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .cli-card .fecha{color:var(--muted);font-size:.78rem;margin-top:4px;white-space:nowrap;}
+  .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;border:1px solid;text-decoration:none;line-height:1.4;}
+  .pill.vendido{color:#39ff88;border-color:#39ff8880;background:#39ff881a;box-shadow:0 0 8px #39ff8833;}
+  .pill.debe{color:#ff4d6d;border-color:#ff4d6d80;background:#ff4d6d1a;box-shadow:0 0 8px #ff4d6d33;}
+  .pill.negociando{color:#ffe94d;border-color:#ffe94d80;background:#ffe94d1a;box-shadow:0 0 8px #ffe94d33;}
+  .pill.entregado{color:#4de1ff;border-color:#4de1ff80;background:#4de1ff1a;box-shadow:0 0 8px #4de1ff33;}
+  .pill.etapa{color:var(--muted);border-color:var(--border);}
+  .pill.wa{color:#25D366;border-color:#25D36680;background:#25D3661a;}
+  .pills-derecha{margin-left:auto;}
+  .clientes-acciones{display:flex;align-items:center;gap:6px;margin-top:4px;}
+  .clientes-acciones .hint{margin-right:auto;}
+  .mas-opciones summary{cursor:pointer;color:var(--muted);font-weight:700;}
+  .clientes-fechas{align-items:flex-end;margin-bottom:4px;}
+  .clientes-fechas label{margin-top:0;}
+  .clientes-fechas #clientes-fechas-limpiar{flex:0 0 auto;margin-bottom:2px;}
+  .btn.btn-neon-verde{color:#39ff88;border:1px solid #39ff8880;background:#39ff881a;box-shadow:0 0 10px #39ff8840;}
+  .pill-accion{font-family:inherit;cursor:pointer;}
   .venta-card{cursor:pointer;}
   .venta-card .top-line{display:flex;justify-content:space-between;align-items:center;}
   .venta-card .cliente-nombre{font-weight:700;}
@@ -258,6 +287,7 @@
   .pill.hoy{background:#e0a94c33;color:var(--warn);}
   .pill.ok{background:#4caf7d33;color:var(--success);}
   .pill.info{background:#5b8def33;color:#8fb4ff;}
+  .pills .pill{margin:0;padding:3px 10px;font-size:.72rem;}
   .hoy-detalle{font-size:.85rem;line-height:1.6;}
   .hoy-detalle .linea{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border);padding:6px 0;}
   .hoy-detalle .linea span:first-child{color:var(--muted);}
@@ -306,26 +336,13 @@
     <small class="hint" id="tasa-bcv-meta">Todavía no se ha cargado.</small>
   </div>
 
-  <!-- ---------- RESUMEN DE VENTAS (reemplaza a la Tasa BCV en las pestañas Ventas y Reportes) ---------- -->
-  <div class="card hidden" id="ventas-resumen-card" style="margin-bottom:0;padding:10px 14px;">
-    <div class="row">
-      <div style="flex:1;border:2px solid var(--gold);border-radius:10px;padding:8px;text-align:center">
-        <label style="margin-top:0">Total ventas</label>
-        <div id="ventas-resumen-total" style="font-size:1.2rem;font-weight:700;color:var(--success)">$0.00</div>
-      </div>
-      <div style="flex:1;border:2px solid var(--gold);border-radius:10px;padding:8px;text-align:center">
-        <label style="margin-top:0">Saldo pendiente</label>
-        <div id="ventas-resumen-saldo" style="font-size:1.2rem;font-weight:700;color:var(--danger)">$0.00</div>
-      </div>
-    </div>
-  </div>
 
   <!-- ---------- TAB: HOY (primera pantalla al abrir la app) ---------- -->
   <div id="tab-hoy" class="tab-content">
     <div class="hoy-stats">
       <div class="hoy-stat"><small>Seguimientos</small><b id="hoy-n-seguimientos">0</b></div>
       <div class="hoy-stat"><small>Por cobrar</small><b id="hoy-n-cobrar" style="color:var(--danger)">$0.00</b></div>
-      <div class="hoy-stat"><small>Entregas 7 días</small><b id="hoy-n-entregas">0</b></div>
+      <div class="hoy-stat"><small>En conversación</small><b id="hoy-n-conversacion">0</b></div>
       <div class="hoy-stat"><small>Cobrado este mes</small><b id="hoy-n-cobrado" style="color:var(--success)">$0.00</b></div>
     </div>
     <div class="card">
@@ -339,7 +356,7 @@
     </div>
     <div class="card">
       <h2>Entregas próximas</h2>
-      <small class="hint">Ventas no enviadas con entrega en los próximos 7 días o ya atrasada.</small>
+      <small class="hint">Ventas no entregadas con entrega en los próximos 7 días o ya atrasada.</small>
       <div id="hoy-entregas"><div class="empty-state">Cargando...</div></div>
     </div>
   </div>
@@ -411,7 +428,7 @@
       <label>Notas</label>
       <textarea id="cot-notas" rows="2"></textarea>
 
-      <button class="btn secondary full" style="margin-top:8px" onclick="agregarItemCotizacion()">+ Agregar pieza a la cotización</button>
+      <button class="btn full btn-neon-verde" style="margin-top:8px" onclick="agregarItemCotizacion()">+ Agregar pieza a la cotización</button>
 
       <div id="cot-items-list"></div>
       <div class="total-line"><span>Total</span><span id="cot-total">$0.00</span></div>
@@ -440,13 +457,6 @@
 
       <button id="cot-guardar-btn" class="btn full" style="margin-top:10px;background:var(--success);color:#fff" onclick="guardarCotizacion()">✓ Guardar cotización</button>
     </div>
-
-    <div class="card">
-      <h2>Cotizaciones pendientes</h2>
-      <small class="hint">Cuando el cliente confirme la compra, tocá "Convertir en venta".</small>
-      <div id="cotizaciones-pendientes-list"><div class="empty-state">Cargando...</div></div>
-      <button class="btn danger full" style="margin-top:10px" onclick="borrarTodasCotizaciones()">🗑 Borrar todas las cotizaciones pendientes</button>
-    </div>
   </div>
 
   <!-- ---------- TAB: VENTAS ---------- -->
@@ -455,131 +465,44 @@
       <button class="btn full" onclick="abrirFormVenta(null)">+ Nueva venta manual</button>
     </div>
     <div class="card">
-      <h2>Ventas registradas</h2>
+      <h2>Clientes</h2>
+      <input type="search" id="clientes-buscar" class="clientes-buscar" placeholder="Buscar cliente, teléfono o producto" oninput="renderClientesLista()">
+      <div class="filtros" id="clientes-filtros">
+        <button type="button" class="filtro activo" data-filtro="todos" onclick="elegirFiltroClientes('todos')">Todos</button>
+        <button type="button" class="filtro" data-filtro="deben" onclick="elegirFiltroClientes('deben')">Deben</button>
+        <button type="button" class="filtro" data-filtro="negociando" onclick="elegirFiltroClientes('negociando')">Negociando</button>
+        <button type="button" class="filtro" data-filtro="vendido" onclick="elegirFiltroClientes('vendido')">Vendido</button>
+        <button type="button" class="filtro" data-filtro="fabricacion" onclick="elegirFiltroClientes('fabricacion')">Fabricación</button>
+        <button type="button" class="filtro" data-filtro="entregado" onclick="elegirFiltroClientes('entregado')">Entregado</button>
+      </div>
+      <div class="row clientes-fechas">
+        <div><label>Desde</label><input type="date" id="clientes-desde" onchange="renderClientesLista()"></div>
+        <div><label>Hasta</label><input type="date" id="clientes-hasta" onchange="renderClientesLista()"></div>
+        <button type="button" class="btn secondary small" id="clientes-fechas-limpiar" onclick="limpiarFechasClientes()">✕</button>
+      </div>
+      <div class="clientes-acciones">
+        <small class="hint" id="clientes-contador"></small>
+        <button type="button" class="btn secondary small" onclick="exportarCSVVentas()">⬇ CSV</button>
+        <button type="button" class="btn secondary small hidden" id="clientes-pdf-taller" onclick="exportarPDFTaller()">🖨 PDF taller</button>
+      </div>
       <div id="ventas-list"><div class="empty-state">Cargando...</div></div>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <div style="flex:1"><label>Desde</label><input type="date" id="ventas-borrar-desde"></div>
-        <div style="flex:1"><label>Hasta</label><input type="date" id="ventas-borrar-hasta"></div>
-      </div>
-      <button class="btn danger full" style="margin-top:6px" onclick="borrarVentasPorPeriodo()">🗑 Borrar ventas por período</button>
     </div>
-  </div>
-
-  <!-- ---------- TAB: REPORTES ---------- -->
-  <div id="tab-reportes" class="tab-content hidden">
-    <div class="card">
-      <h2>Filtros</h2>
-      <div class="filter-block">
-        <div>
-          <label>Status</label>
-          <select id="rep-status">
-            <option value="">Todos</option>
-            <option value="Aprobado">Aprobado</option>
-            <option value="Fabricacion">Fabricación</option>
-            <option value="Listo">Listo para envío</option>
-            <option value="Enviado">Enviado</option>
-          </select>
-        </div>
-        <div>
-          <label>Cliente</label>
-          <input type="text" id="rep-cliente" placeholder="Nombre...">
-        </div>
-        <div>
-          <label>Venta desde</label>
-          <input type="date" id="rep-venta-desde">
-        </div>
-        <div>
-          <label>Venta hasta</label>
-          <input type="date" id="rep-venta-hasta">
-        </div>
-        <div>
-          <label>Entrega aprox. desde</label>
-          <input type="date" id="rep-entrega-desde">
-        </div>
-        <div>
-          <label>Entrega aprox. hasta</label>
-          <input type="date" id="rep-entrega-hasta">
-        </div>
-        <div>
-          <label>Envío desde</label>
-          <input type="date" id="rep-envio-desde">
-        </div>
-        <div>
-          <label>Envío hasta</label>
-          <input type="date" id="rep-envio-hasta">
-        </div>
+    <details class="card mas-opciones">
+      <summary>Más opciones</summary>
+      <div class="section-title">Borrar ventas viejas</div>
+      <small class="hint">Solo borra las ventas <b>Entregadas y pagadas completas</b> (saldo $0) vendidas en el período. Antes de borrar se descarga un CSV de respaldo (no incluye las fotos).</small>
+      <div class="row" style="margin-top:6px">
+        <div><label>Desde</label><input type="date" id="ventas-borrar-desde"></div>
+        <div><label>Hasta</label><input type="date" id="ventas-borrar-hasta"></div>
       </div>
-      <button class="btn full" style="margin-top:12px" onclick="aplicarFiltrosReporte()">Aplicar filtros</button>
-      <button class="btn secondary full" style="margin-top:8px" onclick="limpiarFiltrosReporte()">Limpiar filtros</button>
-    </div>
-    <div class="card">
-      <div class="top-line" style="display:flex;justify-content:space-between;align-items:center">
-        <h2 style="margin:0">Resultado</h2>
-        <button class="btn secondary small" onclick="exportarCSVReporte()">⬇ CSV</button>
-      </div>
-      <div style="overflow-x:auto">
-        <table id="rep-table">
-          <thead><tr><th>Status</th><th>Cliente</th><th>Producto</th><th>F. Venta</th><th>Total</th><th>Saldo</th></tr></thead>
-          <tbody id="rep-tbody"></tbody>
-        </table>
-      </div>
-      <div id="rep-empty" class="empty-state hidden">Sin resultados con estos filtros.</div>
-    </div>
-  </div>
-
-  <!-- ---------- TAB: NOMBRES/DIJES ---------- -->
-  <div id="tab-nombresdijes" class="tab-content hidden">
-    <div class="card">
-      <h2>Filtros</h2>
-      <div class="filter-block">
-        <div>
-          <label>Status</label>
-          <select id="nd-status">
-            <option value="Fabricacion">Fabricación</option>
-            <option value="Aprobado">Aprobado</option>
-            <option value="">Todos</option>
-          </select>
-        </div>
-        <div>
-          <label>Tipo de pieza</label>
-          <select id="nd-tipo">
-            <option value="personalizado">Personalizado</option>
-            <option value="grabado">Grabado</option>
-          </select>
-        </div>
-        <div>
-          <label>Venta desde</label>
-          <input type="date" id="nd-venta-desde">
-        </div>
-        <div>
-          <label>Venta hasta</label>
-          <input type="date" id="nd-venta-hasta">
-        </div>
-      </div>
-      <button class="btn full" style="margin-top:12px" onclick="aplicarFiltrosNombresDijes()">Aplicar filtros</button>
-      <button class="btn secondary full" style="margin-top:8px" onclick="limpiarFiltrosNombresDijes()">Limpiar filtros</button>
-    </div>
-    <div class="card">
-      <div class="top-line" style="display:flex;justify-content:space-between;align-items:center">
-        <h2 style="margin:0">Resultado</h2>
-        <button class="btn secondary small" onclick="exportarPDFNombresDijes()">⬇ PDF</button>
-      </div>
-      <div style="overflow-x:auto">
-        <table id="nd-table">
-          <thead><tr><th>Cliente</th><th>Producto</th><th>Nombres/Dijes</th></tr></thead>
-          <tbody id="nd-tbody"></tbody>
-        </table>
-      </div>
-      <div id="nd-empty" class="empty-state hidden">Sin resultados con estos filtros.</div>
-    </div>
+      <button class="btn danger full" style="margin-top:10px" onclick="borrarVentasPorPeriodo()">🗑 Borrar ventas entregadas y pagadas del período</button>
+    </details>
   </div>
 
   <nav class="tabs">
     <button id="navbtn-hoy" class="active" onclick="mostrarTab('hoy')"><span class="ic">📅</span>Hoy</button>
     <button id="navbtn-cotizar" onclick="mostrarTab('cotizar')"><span class="ic">🧾</span>Cotizar</button>
     <button id="navbtn-ventas" onclick="mostrarTab('ventas')"><span class="ic">💰</span>Ventas</button>
-    <button id="navbtn-reportes" onclick="mostrarTab('reportes')"><span class="ic">📊</span>Reportes</button>
-    <button id="navbtn-nombresdijes" onclick="mostrarTab('nombresdijes')"><span class="ic">🏷️</span>Nombres/Dijes</button>
   </nav>
 </div>
 
@@ -591,7 +514,7 @@
       <button class="close-x" onclick="cerrarModalVenta()">✕</button>
     </div>
     <div id="v-bloqueo-aviso" class="hidden" style="background:var(--danger);color:#fff;padding:8px 10px;border-radius:8px;font-size:.82rem;margin-bottom:10px">
-      🔒 Esta venta ya fue enviada y no se puede modificar. Si fue un error, cambiá el status (abajo) para desbloquearla.
+      🔒 Esta venta ya fue entregada y no se puede modificar. Si fue un error, cambiá el status (abajo) para desbloquearla.
     </div>
 
     <div class="section-title">Datos del cliente</div>
@@ -679,10 +602,9 @@
     </div>
     <label>Status</label>
     <select id="v-status" onchange="onStatusChange()">
-      <option value="Aprobado">Aprobado</option>
+      <option value="Aprobado">Vendido</option>
       <option value="Fabricacion">Fabricación</option>
-      <option value="Listo">Listo para envío</option>
-      <option value="Enviado">Enviado</option>
+      <option value="Enviado">Entregado</option>
     </select>
     <div id="v-fecha-envio-wrap" class="hidden">
       <label>Fecha de envío</label>
@@ -1084,33 +1006,17 @@ function doLogout(){ auth.signOut(); }
 
 /* -------------------- 4) NAVEGACIÓN DE PESTAÑAS -------------------- */
 function mostrarTab(nombre){
-  ['hoy','cotizar','ventas','reportes','nombresdijes'].forEach(function(t){
+  ['hoy','cotizar','ventas'].forEach(function(t){
     document.getElementById('tab-'+t).classList.toggle('hidden', t !== nombre);
     document.getElementById('navbtn-'+t).classList.toggle('active', t === nombre);
   });
-  const mostrarResumen = (nombre === 'ventas' || nombre === 'reportes');
-  const ocultarAmbas = (nombre === 'nombresdijes' || nombre === 'hoy');
+  // La Tasa BCV solo se muestra en Cotizar.
   if(nombre === 'hoy'){ renderHoy(); }
-  document.getElementById('tasa-bcv-card').classList.toggle('hidden', mostrarResumen || ocultarAmbas);
-  document.getElementById('ventas-resumen-card').classList.toggle('hidden', !mostrarResumen);
-  if(mostrarResumen){ actualizarResumenVentas(); }
-  if(nombre === 'reportes'){ aplicarFiltrosReporte(); }
-  if(nombre === 'nombresdijes'){ aplicarFiltrosNombresDijes(); }
-}
-/* Suma el total y el saldo pendiente de todas las ventas, para el resumen
-   que se muestra arriba de "Ventas registradas" en vez de la Tasa BCV. */
-function actualizarResumenVentas(){
-  const elTotal = document.getElementById('ventas-resumen-total');
-  const elSaldo = document.getElementById('ventas-resumen-saldo');
-  if(!elTotal || !elSaldo) return;
-  const total = todasLasVentas.reduce(function(s,v){ return s + Number(v.total||0); }, 0);
-  const saldo = todasLasVentas.reduce(function(s,v){ return s + calcularSaldo(v); }, 0);
-  elTotal.textContent = '$'+total.toFixed(2);
-  elSaldo.textContent = '$'+saldo.toFixed(2);
+  document.getElementById('tasa-bcv-card').classList.toggle('hidden', nombre !== 'cotizar');
 }
 
 /* Nombre y color visual del tipo de pieza (Personalizado/Bisutería/Grabado),
-   usados en Ventas registradas, Reportes y el mensaje de WhatsApp. */
+   usados en Ventas y el mensaje de WhatsApp. */
 function tipoPiezaTexto(tipo){
   if(tipo === 'grabado') return 'Grabado';
   if(tipo === 'bisuteria') return 'Bisutería';
@@ -1136,14 +1042,18 @@ function detalleCorto(it){
 }
 /* Campos con su etiqueta, usada en la tarjeta de "Ventas registradas":
    Personalizado → Pieza, Nombre, Nombre adic., Dijes.
-   Grabado → Pieza, Tipo, Cara frontal, Cara posterior. */
+   Grabado → Pieza, Tipo, Cara frontal, Cara posterior.
+   Cada texto grabado lleva su tipografía al lado (ej. "Nombre: Karley (Tempting)"). */
+function conTipografia(texto, fuente){
+  return fuente ? (texto+' ('+fuente+')') : texto;
+}
 function camposArray(it){
   if(it.tipo === 'grabado'){
     return [
       it.cadena ? ('Pieza: '+it.cadena) : '',
       it.tipoMedalla ? ('Tipo: '+it.tipoMedalla) : '',
-      it.caraFrontal ? ('Cara frontal: '+it.caraFrontal) : '',
-      it.caraPosterior ? ('Cara posterior: '+it.caraPosterior) : ''
+      it.caraFrontal ? ('Cara frontal: '+conTipografia(it.caraFrontal, it.tipografiaFrontal)) : '',
+      it.caraPosterior ? ('Cara posterior: '+conTipografia(it.caraPosterior, it.tipografiaPosterior)) : ''
     ].filter(Boolean);
   }
   if(it.tipo === 'bisuteria'){
@@ -1154,8 +1064,8 @@ function camposArray(it){
   }
   return [
     it.cadena ? ('Pieza: '+it.cadena) : '',
-    it.nombre ? ('Nombre: '+it.nombre) : '',
-    it.nombreAdicional ? ('Nombre adic.: '+it.nombreAdicional) : '',
+    it.nombre ? ('Nombre: '+conTipografia(it.nombre, it.tipografiaNombre)) : '',
+    it.nombreAdicional ? ('Nombre adic.: '+conTipografia(it.nombreAdicional, it.tipografiaAdicional)) : '',
     it.dijes ? ('Dijes: '+it.dijes) : ''
   ].filter(Boolean);
 }
@@ -1367,7 +1277,23 @@ function copiarMensajeCotizacion(){ copiarTexto(document.getElementById('cot-men
 function enviarWhatsAppCotizacion(){
   const msg = document.getElementById('cot-mensaje').value;
   if(!msg){ alert('Generá el mensaje primero.'); return; }
-  window.open('https://wa.me/?text='+encodeURIComponent(msg.normalize('NFC')), '_blank');
+  window.open(linkWhatsApp('', msg.normalize('NFC')), '_blank');
+}
+/* Link para abrir un chat de WhatsApp. En el celular usa wa.me (abre la app); en la
+   compu va directo a WhatsApp Web, porque wa.me ahí se queda en una página intermedia
+   si no está instalado WhatsApp de escritorio. */
+function esCelular(){
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+function linkWhatsApp(numero, mensaje){
+  const texto = mensaje ? encodeURIComponent(mensaje) : '';
+  if(esCelular()){
+    return 'https://wa.me/'+(numero||'')+(texto ? '?text='+texto : '');
+  }
+  const params = [];
+  if(numero) params.push('phone='+numero);
+  if(texto) params.push('text='+texto);
+  return 'https://web.whatsapp.com/send'+(params.length ? '?'+params.join('&') : '');
 }
 
 function guardarCotizacion(){
@@ -1454,24 +1380,15 @@ function cargarCotizacionesPendientes(){
     renderCotizacionesPendientes();
   }, function(err){
     console.error('No se pudieron cargar las cotizaciones pendientes:', err);
-    const el = document.getElementById('cotizaciones-pendientes-list');
+    const el = document.getElementById('ventas-list');
     if(el) el.innerHTML = '<div class="empty-state">Error cargando cotizaciones: '+escapeHtml(err.message||String(err))+'</div>';
   });
 }
+/* Las cotizaciones pendientes ya no se listan en Cotizar: aparecen como "Negociando"
+   en Ventas y en Hoy, y desde su ficha se convierten en venta o se editan. */
 function renderCotizacionesPendientes(){
   renderHoy();
-  const el = document.getElementById('cotizaciones-pendientes-list');
-  if(cotizacionesCache.length === 0){ el.innerHTML = '<div class="empty-state">No hay cotizaciones pendientes.</div>'; return; }
-  el.innerHTML = cotizacionesCache.map(function(c){
-    const resumenProd = c.items.map(function(it){ return camposConEtiquetaLineas(it); }).join('<br>');
-    return '<div class="card" style="margin:8px 0">'+
-      '<div style="font-size:.85rem">'+escapeHtml(c.referencia || '(sin referencia)')+'</div>'+
-      '<div class="meta" style="color:var(--muted);font-size:.78rem;margin-top:4px;line-height:1.5">'+resumenProd+'</div>'+
-      '<div class="total-line" style="font-size:.9rem;margin-top:6px"><span>Total</span><span>$'+Number(c.total).toFixed(2)+'</span></div>'+
-      '<button class="btn full small" style="margin-top:8px" onclick="convertirEnVenta(\''+c.id+'\')">Convertir en venta →</button>'+
-      '<button class="btn secondary full small" style="margin-top:6px" onclick="editarCotizacionPendiente(\''+c.id+'\')">✏️ Editar</button>'+
-      '</div>';
-  }).join('');
+  renderClientesLista();
 }
 function convertirEnVenta(cotizacionId){
   const c = cotizacionesCache.find(function(x){ return x.id === cotizacionId; });
@@ -1480,21 +1397,7 @@ function convertirEnVenta(cotizacionId){
   abrirFormVenta(null, c);
   mostrarTab('ventas');
 }
-function borrarTodasCotizaciones(){
-  if(cotizacionesCache.length === 0){ alert('No hay cotizaciones pendientes para borrar.'); return; }
-  const cantidad = cotizacionesCache.length;
-  if(!confirm('¿Seguro que querés borrar las '+cantidad+' cotizaciones pendientes? Esta acción no se puede deshacer.')) return;
-  const batch = db.batch();
-  cotizacionesCache.forEach(function(c){
-    batch.delete(db.collection('cotizaciones').doc(c.id));
-  });
-  batch.commit().then(function(){
-    alert('Listo, se borraron las cotizaciones pendientes.');
-  }).catch(function(err){
-    alert('Error borrando las cotizaciones: '+err.message);
-  });
-}
-function descargarRespaldoVentasCSV(lista){
+function descargarRespaldoVentasCSV(lista, nombreArchivo){
   const ventas = lista || todasLasVentas;
   let csv = 'ID,Status,Cliente,Cedula,Celular,Empresa Envio,Direccion Envio,Fecha Venta,Fecha Entrega,Fecha Envio,Productos,Total USD,Total Bs,Abonos,Saldo Pendiente\n';
   ventas.forEach(function(v){
@@ -1517,7 +1420,7 @@ function descargarRespaldoVentasCSV(lista){
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'respaldo_ventas_myriedesign_'+hoyISO()+'.csv';
+  a.href = url; a.download = nombreArchivo || ('respaldo_ventas_myriedesign_'+hoyISO()+'.csv');
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
@@ -1526,12 +1429,14 @@ function borrarVentasPorPeriodo(){
   const hasta = document.getElementById('ventas-borrar-hasta').value;
   if(!desde || !hasta){ alert('Seleccioná fecha desde y hasta.'); return; }
   if(desde > hasta){ alert('La fecha "desde" no puede ser mayor que "hasta".'); return; }
+  // Solo ventas Entregadas y pagadas completas: nunca se borra una venta en curso o que deben.
   const ventasFiltradas = todasLasVentas.filter(function(v){
-    return v.fechaVenta && v.fechaVenta >= desde && v.fechaVenta <= hasta;
+    return v.fechaVenta && v.fechaVenta >= desde && v.fechaVenta <= hasta &&
+      v.status === 'Enviado' && calcularSaldo(v) <= 0.004;
   });
-  if(ventasFiltradas.length === 0){ alert('No hay ventas registradas en ese período.'); return; }
+  if(ventasFiltradas.length === 0){ alert('No hay ventas entregadas y pagadas en ese período.'); return; }
   const cantidad = ventasFiltradas.length;
-  if(!confirm('¿Seguro que querés borrar las '+cantidad+' ventas del período '+fmtFecha(desde)+' al '+fmtFecha(hasta)+'? Antes de borrar se va a descargar un CSV de respaldo con esas ventas (no incluye las fotos). Esta acción no se puede deshacer en Firebase.')) return;
+  if(!confirm('¿Seguro que querés borrar las '+cantidad+' ventas entregadas y pagadas del período '+fmtFecha(desde)+' al '+fmtFecha(hasta)+'? Antes de borrar se va a descargar un CSV de respaldo con esas ventas (no incluye las fotos). Esta acción no se puede deshacer en Firebase.')) return;
   if(!confirm('Confirmá de nuevo: se van a borrar '+cantidad+' ventas (clientes, abonos, fotos, todo) de ese período. ¿Continuar?')) return;
   descargarRespaldoVentasCSV(ventasFiltradas);
   const batch = db.batch();
@@ -1539,7 +1444,7 @@ function borrarVentasPorPeriodo(){
     batch.delete(db.collection('ventas').doc(v.id));
   });
   batch.commit().then(function(){
-    alert('Listo. Se descargó un CSV de respaldo (revisá tus descargas) y se borraron '+cantidad+' ventas del período seleccionado.');
+    alert('Listo. Se descargó un CSV de respaldo (revisá tus descargas) y se borraron '+cantidad+' ventas entregadas y pagadas del período seleccionado.');
   }).catch(function(err){
     alert('Error borrando las ventas: '+err.message);
   });
@@ -1549,7 +1454,13 @@ function borrarVentasPorPeriodo(){
 function cargarVentas(){
   db.collection('ventas').onSnapshot(function(snap){
     todasLasVentas = [];
-    snap.forEach(function(doc){ todasLasVentas.push(Object.assign({id:doc.id}, doc.data())); });
+    snap.forEach(function(doc){
+      const v = Object.assign({id:doc.id}, doc.data());
+      // El status "Listo para envío" ya no existe: las ventas viejas con ese status se
+      // tratan como "Fabricación" (y quedan así guardadas la próxima vez que se guarden).
+      if(v.status === 'Listo') v.status = 'Fabricacion';
+      todasLasVentas.push(v);
+    });
     todasLasVentas.sort(function(a,b){ return (b.fechaVenta||'').localeCompare(a.fechaVenta||''); });
     hoyVentasListas = true;
     renderVentasLista();
@@ -1557,7 +1468,8 @@ function cargarVentas(){
 }
 function statusClase(status){ return status === 'Fabricacion' ? 'Fabricacion' : status; }
 function statusTexto(status){
-  const map = { Aprobado:'Aprobado', Fabricacion:'Fabricación', Listo:'Listo para envío', Enviado:'Enviado' };
+  // En la base se siguen guardando "Aprobado" y "Enviado"; solo cambia el texto que se ve.
+  const map = { Aprobado:'Vendido', Fabricacion:'Fabricación', Listo:'Listo para envío', Enviado:'Entregado' };
   return map[status] || status;
 }
 function calcularSaldo(venta){
@@ -1565,25 +1477,113 @@ function calcularSaldo(venta){
   return Number(venta.total||0) - abonado;
 }
 function renderVentasLista(){
-  const el = document.getElementById('ventas-list');
-  actualizarResumenVentas();
   renderHoy();
-  if(todasLasVentas.length === 0){ el.innerHTML = '<div class="empty-state">Todavía no hay ventas registradas.</div>'; return; }
-  el.innerHTML = todasLasVentas.map(function(v){
-    const saldo = calcularSaldo(v);
-    const resumenProd = (v.items||[]).map(function(it){
-      const etiquetaTipo = tipoPiezaTexto(it.tipo)+' ('+it.cantidad+')';
-      return '<b style="color:'+tipoPiezaColor(it.tipo)+'">'+etiquetaTipo+'</b><br>'+camposConEtiquetaLineas(it);
-    }).join('<br>');
-    return '<div class="card venta-card" onclick="abrirFormVenta(\''+v.id+'\')">'+
-      '<div class="top-line"><span class="cliente-nombre">'+escapeHtml(v.nombre||'(sin nombre)')+'</span>'+
-      '<span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></div>'+
-      '<div class="meta" style="line-height:1.5">'+resumenProd+'</div>'+
-      '<div class="meta" style="line-height:1.5">Venta: '+fmtFecha(v.fechaVenta)+'<br>Entrega aprox: '+fmtFecha(v.fechaEntrega)+'</div>'+
-      '<div class="money-line"><span>Total: $'+Number(v.total||0).toFixed(2)+'</span>'+
-      '<span class="'+(saldo>0.004?'saldo-pos':'saldo-zero')+'">Saldo: $'+saldo.toFixed(2)+'</span></div>'+
-      '</div>';
+  renderClientesLista();
+}
+
+/* Lista "Clientes" de la pestaña Ventas: junta ventas y cotizaciones pendientes en
+   tarjetas cortas con pastillas de color (Vendido / Debe / Negociando / Entregado),
+   buscador y filtros que se deslizan de lado. Al tocar una tarjeta abre la ficha. */
+let filtroClientes = 'todos';
+let clientesFiltrados = [];   // lo que se ve en la lista ahora (para el CSV y el PDF taller)
+function elegirFiltroClientes(filtro){
+  filtroClientes = filtro;
+  document.querySelectorAll('#clientes-filtros .filtro').forEach(function(b){
+    b.classList.toggle('activo', b.dataset.filtro === filtro);
+  });
+  renderClientesLista();
+}
+function limpiarFechasClientes(){
+  document.getElementById('clientes-desde').value = '';
+  document.getElementById('clientes-hasta').value = '';
+  renderClientesLista();
+}
+function sinAcentos(s){
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+function descripcionPiezas(items){
+  return (items||[]).map(function(it){
+    const cant = Number(it.cantidad||1);
+    const pieza = (cant > 1 ? cant+' ' : '')+(it.cadena || tipoPiezaTexto(it.tipo));
+    const resto = camposArray(it).filter(function(c){ return c.indexOf('Pieza: ') !== 0; });
+    return pieza + (resto.length ? ' · '+resto.join(' · ') : '');
+  }).join(' | ');
+}
+function fechaCorta(iso){
+  const p = (iso||'').split('-');
+  return p.length === 3 ? p[2]+'/'+p[1] : '';
+}
+function pillWhatsApp(numero){
+  if(!numero) return '';
+  return '<a class="pill wa" href="'+linkWhatsApp(numero, '')+'" target="_blank" onclick="event.stopPropagation()">WA</a>';
+}
+function renderClientesLista(){
+  const el = document.getElementById('ventas-list');
+  if(!el) return;
+  const registros = [];
+  if(filtroClientes === 'todos' || filtroClientes === 'negociando'){
+    cotizacionesCache.forEach(function(c){ registros.push(registroDeCot(c)); });
+  }
+  if(filtroClientes !== 'negociando'){
+    todasLasVentas.forEach(function(v){
+      if(filtroClientes === 'deben' && !(calcularSaldo(v) > 0.004)) return;
+      if(filtroClientes === 'vendido' && v.status === 'Enviado') return;
+      if(filtroClientes === 'entregado' && v.status !== 'Enviado') return;
+      if(filtroClientes === 'fabricacion' && v.status !== 'Fabricacion') return;
+      registros.push(registroDeVenta(v));
+    });
+  }
+  const q = sinAcentos(document.getElementById('clientes-buscar').value.trim());
+  // Rango de fechas (fecha de venta, o de cotización en las Negociando)
+  const desde = document.getElementById('clientes-desde').value;
+  const hasta = document.getElementById('clientes-hasta').value;
+  const filtrados = registros.filter(function(r){
+    if(desde && (!r.fecha || r.fecha < desde)) return false;
+    if(hasta && (!r.fecha || r.fecha > hasta)) return false;
+    if(!q) return true;
+    return sinAcentos(r.nombre+' '+(r.celular||'')+' '+descripcionPiezas(r.items)).indexOf(q) !== -1;
+  });
+  filtrados.sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
+  clientesFiltrados = filtrados;
+  document.getElementById('clientes-contador').textContent = filtrados.length+' registro'+(filtrados.length === 1 ? '' : 's');
+  document.getElementById('clientes-pdf-taller').classList.toggle('hidden', filtroClientes !== 'fabricacion');
+  if(filtrados.length === 0){ el.innerHTML = '<div class="empty-state">No hay registros con ese filtro.</div>'; return; }
+  // En Ventas la tarjeta abre el formulario de venta: la cotización ya prellenada
+  // para convertirla, o la venta para editarla (la ficha de seguimiento es solo de Hoy).
+  el.innerHTML = filtrados.map(function(r){
+    const accion = r.tipo === 'cot' ? 'convertirEnVenta(\''+r.id+'\')' : 'abrirFormVenta(\''+r.id+'\')';
+    const derecha = r.tipo === 'cot'
+      ? '<button type="button" class="pill negociando pill-accion" onclick="event.stopPropagation();'+accion+'">Crear Venta</button>'
+      : '';
+    return tarjetaCliente(r, '', accion, derecha);
   }).join('');
+}
+function registroDeCot(c){
+  return { tipo:'cot', id:c.id, nombre:c.referencia || '(sin referencia)', total:c.total,
+    fecha:c.fecha || '', items:c.items, celular:c.referencia, saldo:0, status:'Cotizado' };
+}
+function registroDeVenta(v){
+  return { tipo:'venta', id:v.id, nombre:v.nombre || '(sin nombre)', total:v.total,
+    fecha:v.fechaVenta || '', items:v.items, celular:v.celular, saldo:calcularSaldo(v), status:v.status };
+}
+/* Tarjeta corta de cliente (usada en Ventas y en Hoy). pillsExtra va antes de WA
+   (ej. "Atrasado 2 días" en los seguimientos). accion: JS al tocarla (por defecto, la ficha de Hoy).
+   derecha: botón que va a la derecha de las pastillas, debajo de la fecha (ej. "Crear Venta"). */
+function tarjetaCliente(r, pillsExtra, accion, derecha){
+  let pills = '';
+  if(r.tipo === 'cot'){
+    pills += '<span class="pill negociando">Negociando</span>';
+  } else {
+    pills += r.status === 'Enviado' ? '<span class="pill entregado">Entregado</span>' : '<span class="pill vendido">Vendido</span>';
+    if(r.status === 'Fabricacion') pills += '<span class="pill etapa">'+statusTexto(r.status)+'</span>';
+    if(r.saldo > 0.004) pills += '<span class="pill debe">Debe $'+r.saldo.toFixed(2)+'</span>';
+  }
+  pills += (pillsExtra || '') + pillWhatsApp(numeroWhatsApp(r.celular));
+  return '<div class="cli-card" onclick="'+(accion || 'abrirFichaHoy(\''+r.tipo+'\',\''+r.id+'\')')+'">'+
+    '<div class="fila"><span class="nombre">'+escapeHtml(r.nombre)+'</span><span class="monto">$'+Number(r.total||0).toFixed(2)+'</span></div>'+
+    '<div class="fila"><span class="desc">'+escapeHtml(descripcionPiezas(r.items))+'</span><span class="fecha">'+fechaCorta(r.fecha)+'</span></div>'+
+    '<div class="pills">'+pills+(derecha ? '<span class="pills-derecha">'+derecha+'</span>' : '')+'</div>'+
+    '</div>';
 }
 
 /* -------------------- 8) VENTAS: FORMULARIO / MODAL -------------------- */
@@ -1657,7 +1657,9 @@ function abrirFormVenta(id, cotizacionPrellenada){
   // limpiar el formulario de "agregar pieza" y la selección de tipografía
   limpiarCamposPiezaVenta();
   piezaEditando = null;
-  abonosRegistrados = ventaAbonos.length;
+  // Solo se bloquean los abonos de una venta ya guardada. Al convertir una cotización
+  // (venta nueva), el abono que trae se puede quitar y cargar de nuevo con otro monto.
+  abonosRegistrados = id ? ventaAbonos.length : 0;
   // Sin piezas, el formulario arranca abierto; con piezas, escondido detrás de "+ Agregar otra pieza".
   mostrarFormPiezaVenta(ventaItems.length === 0);
   document.getElementById('ab-tasa').value = tasaBcvDia || '';
@@ -1761,6 +1763,7 @@ function agregarItemVenta(){
     ventaItems.push(item);
   }
   piezaEditando = null;
+  piezaEditandoCopia = null;
   limpiarCamposPiezaVenta();
   mostrarFormPiezaVenta(false);
   renderItemsVenta();
@@ -1825,7 +1828,7 @@ function renderItemsVenta(){
         '<button type="button" class="btn secondary small x" style="padding:6px 10px" onclick="quitarItemVenta('+idx+')">✕ Quitar</button>'+
       '</div></div>';
   }).join('') : '<div class="empty-state" style="padding:12px">Todavía no hay piezas. Agregá la primera abajo.</div>';
-  const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
+  const total = totalPiezasVenta();
   document.getElementById('v-total').textContent = '$'+total.toFixed(2);
   const tasaHoy = parseFloat(document.getElementById('tasa-bcv-global').value) || 0;
   if(tasaHoy > 0){ document.getElementById('v-total-bs').value = (total*tasaHoy).toFixed(2); }
@@ -1841,7 +1844,7 @@ function agregarAbono(){
   const tasa = parseFloat(document.getElementById('ab-tasa').value) || 0;
   const monto = parseFloat(document.getElementById('ab-monto').value);
   if(isNaN(monto) || monto <= 0){ alert('Ingresá un monto válido.'); return; }
-  const totalVenta = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
+  const totalVenta = totalPiezasVenta();
   const abonadoPrevio = ventaAbonos.reduce(function(s,a){ return s + Number(a.monto); }, 0);
   const saldoDisponible = totalVenta - abonadoPrevio;
   if(monto > saldoDisponible + 0.004){
@@ -1866,8 +1869,8 @@ function renderAbonosVenta(){
       lineas.push('Bs.: '+Number(a.montoBs||0).toFixed(2));
       lineas.push('Tasa BCV: '+Number(a.tasaBcv).toFixed(2));
     }
-    // Los abonos que ya venían registrados (guardados o traídos de la cotización) no se
-    // pueden quitar; solo los agregados ahora mismo, por si se cargó mal el monto.
+    // Los abonos de una venta ya guardada no se pueden quitar; solo los agregados
+    // ahora mismo, por si se cargó mal el monto.
     const quitar = idx < abonosRegistrados
       ? '<span style="color:var(--success);font-size:.75rem;font-weight:700">🔒 Registrado</span>'
       : '<span class="x" onclick="quitarAbono('+idx+')">✕</span>';
@@ -1875,8 +1878,16 @@ function renderAbonosVenta(){
   }).join('');
   recalcularSaldoModal();
 }
-function recalcularSaldoModal(){
+/* Total de la venta en el modal. Incluye la pieza que se está editando (sale de la lista
+   mientras se edita), para que el total y el saldo no cambien solo por tocar "Editar". */
+function totalPiezasVenta(){
   const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
+  const enEdicion = (piezaEditando !== null && piezaEditandoCopia)
+    ? piezaEditandoCopia.precio*piezaEditandoCopia.cantidad : 0;
+  return total + enEdicion;
+}
+function recalcularSaldoModal(){
+  const total = totalPiezasVenta();
   const abonado = ventaAbonos.reduce(function(s,a){ return s + Number(a.monto); }, 0);
   document.getElementById('v-abonado').textContent = '$'+abonado.toFixed(2);
   document.getElementById('v-saldo').textContent = '$'+(total-abonado).toFixed(2);
@@ -2081,159 +2092,24 @@ function verResumenVenta(){
 }
 function copiarResumen(){ copiarTexto(document.getElementById('resumen-texto')); }
 
-/* -------------------- 12) REPORTES -------------------- */
-function aplicarFiltrosReporte(){
-  const status = document.getElementById('rep-status').value;
-  const cliente = document.getElementById('rep-cliente').value.trim().toLowerCase();
-  const ventaDesde = document.getElementById('rep-venta-desde').value;
-  const ventaHasta = document.getElementById('rep-venta-hasta').value;
-  const entregaDesde = document.getElementById('rep-entrega-desde').value;
-  const entregaHasta = document.getElementById('rep-entrega-hasta').value;
-  const envioDesde = document.getElementById('rep-envio-desde').value;
-  const envioHasta = document.getElementById('rep-envio-hasta').value;
-
-  const filtradas = todasLasVentas.filter(function(v){
-    if(status && v.status !== status) return false;
-    if(cliente && (v.nombre||'').toLowerCase().indexOf(cliente) === -1) return false;
-    if(ventaDesde && (v.fechaVenta||'') < ventaDesde) return false;
-    if(ventaHasta && (v.fechaVenta||'') > ventaHasta) return false;
-    if(entregaDesde && (v.fechaEntrega||'') < entregaDesde) return false;
-    if(entregaHasta && (v.fechaEntrega||'') > entregaHasta) return false;
-    if(envioDesde && (v.fechaEnvio||'') < envioDesde) return false;
-    if(envioHasta && (v.fechaEnvio||'') > envioHasta) return false;
-    return true;
-  });
-
-  const tbody = document.getElementById('rep-tbody');
-  document.getElementById('rep-empty').classList.toggle('hidden', filtradas.length > 0);
-  tbody.innerHTML = filtradas.map(function(v){
-    const saldo = calcularSaldo(v);
-    const resumenProd = (v.items||[]).map(function(it){
-      const etiquetaTipo = tipoPiezaTexto(it.tipo)+' ('+it.cantidad+')';
-      return '<b style="color:'+tipoPiezaColor(it.tipo)+'">'+etiquetaTipo+'</b><br>'+camposConEtiquetaLineas(it);
-    }).join('<br>');
-    return '<tr><td><span class="badge '+statusClase(v.status)+'">'+statusTexto(v.status)+'</span></td>'+
-      '<td>'+escapeHtml(v.nombre||'-')+'</td>'+
-      '<td style="line-height:1.5">'+resumenProd+'</td>'+
-      '<td>'+fmtFecha(v.fechaVenta)+'</td>'+
-      '<td>$'+Number(v.total||0).toFixed(2)+'</td>'+
-      '<td class="'+(saldo>0.004?'saldo-pos':'saldo-zero')+'">$'+saldo.toFixed(2)+'</td></tr>';
-  }).join('');
-  window._reporteFiltrado = filtradas;
+/* -------------------- 12) CSV Y PDF TALLER (desde la lista de Ventas) --------------------
+   Reemplazan a las viejas pestañas Reportes y Nombres/Dijes: usan lo que esté filtrado
+   en la lista (filtro, fechas y buscador). */
+function ventasFiltradasLista(){
+  const ids = {};
+  clientesFiltrados.forEach(function(r){ if(r.tipo === 'venta') ids[r.id] = true; });
+  return todasLasVentas.filter(function(v){ return ids[v.id]; });
 }
-function limpiarFiltrosReporte(){
-  ['rep-status','rep-cliente','rep-venta-desde','rep-venta-hasta','rep-entrega-desde','rep-entrega-hasta','rep-envio-desde','rep-envio-hasta'].forEach(function(id){
-    document.getElementById(id).value = '';
-  });
-  aplicarFiltrosReporte();
+function exportarCSVVentas(){
+  const ventas = ventasFiltradasLista();
+  if(ventas.length === 0){ alert('No hay ventas en la lista para descargar.'); return; }
+  descargarRespaldoVentasCSV(ventas, 'ventas_myriedesign_'+hoyISO()+'.csv');
 }
-function exportarCSVReporte(){
-  const filas = window._reporteFiltrado || [];
-  let csv = 'Status,Cliente,Producto,Fecha Venta,Total,Saldo\n';
-  filas.forEach(function(v){
-    const saldo = calcularSaldo(v);
-    const resumenProd = (v.items||[]).map(function(it){ return camposConEtiqueta(it); }).join(' | ');
-    const fila = [statusTexto(v.status), v.nombre||'', resumenProd, fmtFecha(v.fechaVenta), Number(v.total||0).toFixed(2), saldo.toFixed(2)];
-    csv += fila.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(',') + '\n';
-  });
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'reporte_myriedesign_'+hoyISO()+'.csv';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-}
-
-/* -------------------- 12b) NOMBRES/DIJES -------------------- */
-/* Texto del producto igual al formato del mensaje de WhatsApp (con ✅), sin precio. */
-function productoTextoHtml(it){
-  const partes = [];
-  partes.push('<b style="color:'+tipoPiezaColor(it.tipo)+'">'+tipoPiezaTexto(it.tipo)+'</b>');
-  if(it.cadena) partes.push('Pieza: '+escapeHtml(it.cadena));
-  if(it.tipo === 'grabado'){
-    if(it.tipoMedalla) partes.push('Tipo: '+escapeHtml(it.tipoMedalla));
-    if(it.caraFrontal) partes.push('Cara Frontal: '+escapeHtml(it.caraFrontal));
-    if(it.tipografiaFrontal) partes.push('Tipografía: '+escapeHtml(it.tipografiaFrontal));
-    if(it.caraPosterior) partes.push('Cara Posterior: '+escapeHtml(it.caraPosterior));
-    if(it.tipografiaPosterior) partes.push('Tipografía: '+escapeHtml(it.tipografiaPosterior));
-  } else if(it.tipo === 'bisuteria'){
-    if(it.tipoBisuteria) partes.push('Tipo: '+escapeHtml(it.tipoBisuteria));
-  } else {
-    if(it.nombre) partes.push('Nombre:<br>✅'+escapeHtml(it.nombre));
-    if(it.tipografiaNombre) partes.push('Tipografía: '+escapeHtml(it.tipografiaNombre));
-    if(it.nombreAdicional){
-      partes.push('Nombre adicional:<br>✅'+escapeHtml(it.nombreAdicional));
-      if(it.tipografiaAdicional) partes.push('Tipografía: '+escapeHtml(it.tipografiaAdicional));
-    }
-    if(it.dijes) partes.push('Dijes:<br>✅'+escapeHtml(it.dijes));
-  }
-  if(it.notas) partes.push('Notas: '+escapeHtml(it.notas));
-  return partes.join('<br>');
-}
-function productoTextoPlano(it){
-  return productoTextoHtml(it).replace(/<br>/g,'\n').replace(/<[^>]+>/g,'');
-}
-/* Solo los nombres y dijes mencionados (sin tipografías ni precios). */
-function nombresDijesDeItem(it){
-  if(it.tipo === 'grabado' || it.tipo === 'bisuteria') return [];
-  const lista = [];
-  if(it.nombre) lista.push(it.nombre);
-  if(it.nombreAdicional) lista.push(it.nombreAdicional);
-  if(it.dijes) lista.push(it.dijes);
-  return lista;
-}
-function aplicarFiltrosNombresDijes(){
-  const status = document.getElementById('nd-status').value;
-  const tipo = document.getElementById('nd-tipo').value;
-  const ventaDesde = document.getElementById('nd-venta-desde').value;
-  const ventaHasta = document.getElementById('nd-venta-hasta').value;
-
-  const filtradas = todasLasVentas.filter(function(v){
-    if(status && v.status !== status) return false;
-    if(ventaDesde && (v.fechaVenta||'') < ventaDesde) return false;
-    if(ventaHasta && (v.fechaVenta||'') > ventaHasta) return false;
-    if(!(v.items||[]).some(function(it){ return (it.tipo||'personalizado') === tipo; })) return false;
-    return true;
-  });
-
-  const tbody = document.getElementById('nd-tbody');
-  document.getElementById('nd-empty').classList.toggle('hidden', filtradas.length > 0);
-  tbody.innerHTML = filtradas.map(function(v){
-    const items = (v.items||[]).filter(function(it){ return (it.tipo||'personalizado') === tipo; });
-    const producto = items.map(productoTextoHtml).join('<br><br>');
-    const nombresDijes = items.reduce(function(acc,it){ return acc.concat(nombresDijesDeItem(it)); }, []);
-    const listado = nombresDijes.length ? nombresDijes.map(function(n){ return escapeHtml(n); }).join('<br>') : '-';
-    return '<tr><td>'+escapeHtml(v.nombre||'-')+'</td>'+
-      '<td style="line-height:1.5">'+producto+'</td>'+
-      '<td style="line-height:1.5">'+listado+'</td></tr>';
-  }).join('');
-  window._nombresDijesFiltrado = filtradas.map(function(v){
-    return Object.assign({}, v, { items: (v.items||[]).filter(function(it){ return (it.tipo||'personalizado') === tipo; }) });
-  });
-}
-function limpiarFiltrosNombresDijes(){
-  document.getElementById('nd-status').value = 'Fabricacion';
-  document.getElementById('nd-tipo').value = 'personalizado';
-  document.getElementById('nd-venta-desde').value = '';
-  document.getElementById('nd-venta-hasta').value = '';
-  aplicarFiltrosNombresDijes();
-}
-/* Filas del PDF: una por cada nombre/nombre adicional del ítem, con su tipografía y los dijes de la pieza. */
-function filasPDFNombresDijes(filas){
-  const out = [];
-  filas.forEach(function(v){
-    (v.items||[]).forEach(function(it){
-      if(it.nombre) out.push({ cliente:v.nombre||'-', nombre:it.nombre, tipografia:it.tipografiaNombre||'-', dijes:it.dijes||'-' });
-      if(it.nombreAdicional) out.push({ cliente:v.nombre||'-', nombre:it.nombreAdicional, tipografia:it.tipografiaAdicional||'-', dijes:it.dijes||'-' });
-    });
-  });
-  return out;
-}
-function exportarPDFNombresDijes(){
-  const filas = window._nombresDijesFiltrado || [];
-  const filasPdf = filasPDFNombresDijes(filas);
-  const ventaDesde = document.getElementById('nd-venta-desde').value;
-  const ventaHasta = document.getElementById('nd-venta-hasta').value;
-  const rango = (ventaDesde||ventaHasta) ? ('Del '+(ventaDesde?fmtFecha(ventaDesde):'...')+' al '+(ventaHasta?fmtFecha(ventaHasta):'...')) : 'Todas las fechas';
+function exportarPDFTaller(){
+  const filasPdf = filasPDFNombresDijes(ventasFiltradasLista());
+  const desde = document.getElementById('clientes-desde').value;
+  const hasta = document.getElementById('clientes-hasta').value;
+  const rango = (desde||hasta) ? ('Del '+(desde?fmtFecha(desde):'...')+' al '+(hasta?fmtFecha(hasta):'...')) : 'Todas las fechas';
 
   const filasHtml = filasPdf.length ? filasPdf.map(function(f){
     return '<tr><td>'+escapeHtml(f.cliente)+'</td><td>'+escapeHtml(f.nombre)+'</td><td>'+escapeHtml(f.tipografia)+'</td><td>'+escapeHtml(f.dijes)+'</td></tr>';
@@ -2257,7 +2133,17 @@ function exportarPDFNombresDijes(){
   const w = window.open('', '_blank');
   w.document.open(); w.document.write(html); w.document.close();
 }
-
+/* Filas del PDF: una por cada nombre/nombre adicional del ítem, con su tipografía y los dijes de la pieza. */
+function filasPDFNombresDijes(filas){
+  const out = [];
+  filas.forEach(function(v){
+    (v.items||[]).forEach(function(it){
+      if(it.nombre) out.push({ cliente:v.nombre||'-', nombre:it.nombre, tipografia:it.tipografiaNombre||'-', dijes:it.dijes||'-' });
+      if(it.nombreAdicional) out.push({ cliente:v.nombre||'-', nombre:it.nombreAdicional, tipografia:it.tipografiaAdicional||'-', dijes:it.dijes||'-' });
+    });
+  });
+  return out;
+}
 /* -------------------- 12b) PESTAÑA HOY --------------------
    Primera pantalla al abrir la app: a quién escribir, quién debe y qué hay que
    entregar. Solo lee los datos que ya cargan Cotizar y Ventas; lo único que
@@ -2330,32 +2216,22 @@ function renderHoy(){
 
   document.getElementById('hoy-n-seguimientos').textContent = hoyCotizacionesListas ? seguir.length : '…';
   document.getElementById('hoy-n-cobrar').textContent = '$'+porCobrar.toFixed(2);
-  document.getElementById('hoy-n-entregas').textContent = hoyVentasListas ? entregas.length : '…';
+  document.getElementById('hoy-n-conversacion').textContent = hoyCotizacionesListas ? cotizacionesCache.length : '…';
   document.getElementById('hoy-n-cobrado').textContent = '$'+cobradoMes.toFixed(2);
 
   const vacio = function(listo, texto){
     return '<div class="empty-state">'+(listo ? texto : 'Cargando...')+'</div>';
   };
   document.getElementById('hoy-seguimientos').innerHTML = seguir.length ? seguir.map(function(c){
-    return '<button class="hoy-card" onclick="abrirFichaHoy(\'cot\',\''+c.id+'\')">'+
-      '<div class="top-line"><span>'+escapeHtml(c.referencia || '(sin referencia)')+'</span><span>$'+Number(c.total||0).toFixed(2)+'</span></div>'+
-      '<div class="sub-line">'+escapeHtml(productosCortos(c.items))+'</div>'+
-      pillAtraso(seguimientoCot(c), 'Toca hoy')+'</button>';
-  }).join('') : vacio(hoyCotizacionesListas, 'No hay seguimientos pendientes para hoy. 🎉');
+    return tarjetaCliente(registroDeCot(c), pillAtraso(seguimientoCot(c), 'Toca hoy'));
+  }).join('') : vacio(hoyCotizacionesListas, 'No hay seguimientos pendientes para hoy.');
 
   document.getElementById('hoy-deben').innerHTML = deben.length ? deben.map(function(v){
-    return '<button class="hoy-card" onclick="abrirFichaHoy(\'venta\',\''+v.id+'\')">'+
-      '<div class="top-line"><span>'+escapeHtml(v.nombre || '(sin nombre)')+'</span><span class="saldo-pos">Debe $'+calcularSaldo(v).toFixed(2)+'</span></div>'+
-      '<div class="sub-line">'+escapeHtml(productosCortos(v.items))+'</div>'+
-      '<span class="badge '+statusClase(v.status)+'" style="margin-top:6px">'+statusTexto(v.status)+'</span></button>';
+    return tarjetaCliente(registroDeVenta(v), '');
   }).join('') : vacio(hoyVentasListas, 'Nadie debe nada por ahora.');
 
   document.getElementById('hoy-entregas').innerHTML = entregas.length ? entregas.map(function(v){
-    return '<button class="hoy-card" onclick="abrirFichaHoy(\'venta\',\''+v.id+'\')">'+
-      '<div class="top-line"><span>'+escapeHtml(v.nombre || '(sin nombre)')+'</span><span>'+fmtFecha(v.fechaEntrega)+'</span></div>'+
-      '<div class="sub-line">'+escapeHtml(productosCortos(v.items))+'</div>'+
-      pillAtraso(v.fechaEntrega, 'Entrega hoy')+
-      '<span class="badge '+statusClase(v.status)+'" style="margin-top:6px">'+statusTexto(v.status)+'</span></button>';
+    return tarjetaCliente(registroDeVenta(v), pillAtraso(v.fechaEntrega, 'Entrega hoy'));
   }).join('') : vacio(hoyVentasListas, 'No hay entregas en los próximos 7 días.');
 
   // Si la ficha está abierta, se refresca con los datos nuevos.
@@ -2364,14 +2240,32 @@ function renderHoy(){
   }
 }
 
+/* Mensajes que quedan escritos en WhatsApp desde la ficha de Hoy. */
+function primerNombre(nombre){
+  return String(nombre||'').trim().split(/\s+/)[0] || '';
+}
+function mensajeRecordatorioPago(v, saldo){
+  const nombre = primerNombre(v.nombre);
+  return 'Hola'+(nombre ? ' '+nombre : '')+', te escribimos de Myriedesign. '+
+    'Te recordamos que tienes un saldo pendiente de $'+saldo.toFixed(2)+
+    ' por tu pedido ('+productosCortos(v.items)+'). ¡Gracias!';
+}
+function mensajeSeguimientoCot(c){
+  return 'Hola, te escribimos de Myriedesign. ¿Pudiste pensar en la cotización que te enviamos ('+
+    productosCortos(c.items)+', total $'+Number(c.total||0).toFixed(2)+')? '+
+    'Cualquier duda o cambio que quieras hacer, estamos para ayudarte.';
+}
+
 let fichaHoyActual = null;
 function lineaFicha(etiqueta, valorHtml){
   return '<div class="linea"><span>'+etiqueta+'</span><span>'+valorHtml+'</span></div>';
 }
-function botonesContacto(numero){
+/* mensaje (opcional): texto que queda escrito en el chat de WhatsApp para revisarlo antes de enviarlo. */
+function botonesContacto(numero, mensaje){
   if(!numero) return '';
+  const href = linkWhatsApp(numero, mensaje);
   return '<div class="row" style="margin-top:10px">'+
-    '<a class="btn small" style="background:#25D366;color:#fff;text-decoration:none" href="https://wa.me/'+numero+'" target="_blank">💬 WhatsApp</a>'+
+    '<a class="btn small" style="background:#25D366;color:#fff;text-decoration:none" href="'+href+'" target="_blank">💬 WhatsApp</a>'+
     '<button class="btn secondary small" onclick="copiarNumeroHoy(\''+numero+'\', this)">📋 Copiar número</button>'+
     '</div>';
 }
@@ -2390,7 +2284,7 @@ function abrirFichaHoy(tipo, id){
       lineaFicha('Seguimiento', fmtFecha(seg)+(c.seguimiento ? '' : ' <small>(automático)</small>'))+
       '<div style="margin-top:8px;color:var(--muted)">'+(c.items||[]).map(resumenPiezaLineas).join('<br><br>')+'</div>'+
       '</div>'+
-      botonesContacto(numeroWhatsApp(c.referencia))+
+      botonesContacto(numeroWhatsApp(c.referencia), mensajeSeguimientoCot(c))+
       '<div class="section-title">¿Ya le escribiste?</div>'+
       '<button class="btn full" style="margin-top:8px" onclick="posponerSeguimiento(\''+c.id+'\',2)">✓ Sí · recordar en 2 días</button>'+
       '<button class="btn secondary full" style="margin-top:6px" onclick="posponerSeguimiento(\''+c.id+'\',7)">✓ Sí · recordar en 1 semana</button>'+
@@ -2399,10 +2293,8 @@ function abrirFichaHoy(tipo, id){
         '<button class="btn secondary small" style="flex:0 0 auto;margin-bottom:2px" onclick="guardarFechaSeguimiento(\''+c.id+'\')">Guardar</button>'+
       '</div>'+
       '<button class="btn secondary full" style="margin-top:6px;color:var(--muted)" onclick="descartarSeguimiento(\''+c.id+'\')">✕ Descartar · no hacerle más seguimiento</button>'+
-      '<small class="hint">No borra la cotización: sigue en Cotizar, solo deja de aparecer en Hoy.</small>'+
-      '<div class="section-title">Cotización</div>'+
-      '<button class="btn full" style="margin-top:8px" onclick="cerrarFichaHoy();convertirEnVenta(\''+c.id+'\')">Convertir en venta →</button>'+
-      '<button class="btn secondary full" style="margin-top:6px" onclick="irAEditarCotizacion(\''+c.id+'\')">✏️ Editar cotización</button>';
+      '<small class="hint">No borra la cotización: sigue en Ventas como Negociando, solo deja de aparecer en Hoy.</small>'+
+      '<button class="btn secondary full" style="margin-top:14px" onclick="irAEditarCotizacion(\''+c.id+'\')">✏️ Editar cotización</button>';
   } else {
     const v = todasLasVentas.find(function(x){ return x.id === id; });
     if(!v){ cerrarFichaHoy(); return; }
@@ -2419,8 +2311,7 @@ function abrirFichaHoy(tipo, id){
       lineaFicha('Saldo', '<span class="'+(saldo>0.004?'saldo-pos':'saldo-zero')+'">$'+saldo.toFixed(2)+'</span>')+
       '<div style="margin-top:8px;color:var(--muted)">'+(v.items||[]).map(resumenPiezaLineas).join('<br><br>')+'</div>'+
       '</div>'+
-      botonesContacto(numeroWhatsApp(v.celular))+
-      '<button class="btn full" style="margin-top:14px" onclick="cerrarFichaHoy();abrirFormVenta(\''+v.id+'\')">Abrir venta completa →</button>';
+      botonesContacto(numeroWhatsApp(v.celular), saldo > 0.004 ? mensajeRecordatorioPago(v, saldo) : '');
   }
   cuerpo.innerHTML = html;
   fichaHoyActual = { tipo: tipo, id: id };
