@@ -752,9 +752,13 @@
       <!-- Solo con status Listo: avisar al cliente; compartir/descargar solo si hay fotos de producto terminado. -->
       <div id="v-listo-acciones" class="hidden" style="margin-bottom:6px">
         <button class="btn full" style="background:#25D366;color:#fff" onclick="avisarListo('modal')">💬 Avisar que está listo</button>
-        <div class="row" id="v-listo-fotos" style="margin-top:6px">
-          <button class="btn secondary small" onclick="compartirListo('modal')">📤 Compartir foto + mensaje</button>
-          <button class="btn secondary small" onclick="descargarFotosListo('modal')">📥 Descargar foto</button>
+        <div id="v-listo-fotos">
+          <div class="row" style="margin-top:6px">
+            <button class="btn secondary small" onclick="compartirListo('modal')">📤 Compartir foto + mensaje</button>
+            <button class="btn secondary small" onclick="descargarFotosListo('modal')">📥 Descargar foto</button>
+          </div>
+          <!-- Para pegarlo en el buscador de WhatsApp al compartir (ahí hay que elegir el contacto a mano). -->
+          <button class="btn secondary small full" style="margin-top:6px" onclick="copiarNumeroVenta(this)">📋 Copiar número del cliente</button>
         </div>
       </div>
       <button class="btn full" style="background:var(--success);color:#fff" onclick="guardarVenta()">✓ Guardar venta</button>
@@ -2153,6 +2157,12 @@ function compartirListo(fuente){
     if(err && err.name === 'AbortError') return;   // cerraron el menú de compartir
     alert('No se pudo compartir: '+err.message);
   });
+}
+function copiarNumeroVenta(boton){
+  const numero = numeroWhatsApp(document.getElementById('v-celular').value);
+  if(!numero){ alert('Esta venta no tiene un celular válido.'); return; }
+  copiarNumeroHoy(numero, boton);
+  setTimeout(function(){ boton.textContent = '📋 Copiar número del cliente'; }, 2000);
 }
 function descargarFotosListo(fuente){
   const d = datosAvisoListo(fuente);
