@@ -753,10 +753,7 @@
       <div id="v-listo-acciones" class="hidden" style="margin-bottom:6px">
         <button class="btn full" style="background:#25D366;color:#fff" onclick="avisarListo('modal')">💬 Avisar que está listo</button>
         <div id="v-listo-fotos">
-          <div class="row" style="margin-top:6px">
-            <button class="btn secondary small" onclick="compartirListo('modal')">📤 Compartir foto + mensaje</button>
-            <button class="btn secondary small" onclick="descargarFotosListo('modal')">📥 Descargar foto</button>
-          </div>
+          <button class="btn secondary small full" style="margin-top:6px" onclick="compartirListo('modal')">📤 Compartir foto + mensaje</button>
           <!-- Para pegarlo en el buscador de WhatsApp al compartir (ahí hay que elegir el contacto a mano). -->
           <button class="btn secondary small full" style="margin-top:6px" onclick="copiarNumeroVenta(this)">📋 Copiar número del cliente</button>
         </div>
@@ -2149,7 +2146,7 @@ function compartirListo(fuente){
   archivosFotosListo(d).then(function(files){
     if(!files.length){ alert('Esta venta no tiene fotos de producto terminado.'); return; }
     if(!navigator.canShare || !navigator.canShare({ files: files })){
-      alert('Este navegador no permite compartir fotos. Usá "Descargar foto" y después "Avisar que está listo".');
+      alert('Este navegador no permite compartir fotos. Usá "Avisar que está listo" y adjuntá la foto en el chat.');
       return;
     }
     return navigator.share({ files: files, text: mensajePedidoListo(d).normalize('NFC') });
@@ -2163,20 +2160,6 @@ function copiarNumeroVenta(boton){
   if(!numero){ alert('Esta venta no tiene un celular válido.'); return; }
   copiarNumeroHoy(numero, boton);
   setTimeout(function(){ boton.textContent = '📋 Copiar número del cliente'; }, 2000);
-}
-function descargarFotosListo(fuente){
-  const d = datosAvisoListo(fuente);
-  if(!d) return;
-  archivosFotosListo(d).then(function(files){
-    if(!files.length){ alert('Esta venta no tiene fotos de producto terminado.'); return; }
-    files.forEach(function(file){
-      const url = URL.createObjectURL(file);
-      const a = document.createElement('a');
-      a.href = url; a.download = file.name;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-    });
-  }).catch(function(err){ alert('No se pudo descargar: '+err.message); });
 }
 /* Una venta con status "Enviado" queda bloqueada: ya se despachó, no debería modificarse.
    Se deja siempre habilitado el Status (por si fue un error y hay que revertirlo), Guardar
@@ -2812,10 +2795,7 @@ function abrirFichaHoy(tipo, id){
       (v.status === 'Listo'
         ? botonesContacto(numeroWhatsApp(v.celular), mensajePedidoListo(datosAvisoListo(v.id)))+
           (fotosDataUrl(v.fotos && v.fotos.productoFinal).length
-            ? '<div class="row" style="margin-top:6px">'+
-                '<button class="btn secondary small" onclick="compartirListo(\''+v.id+'\')">📤 Compartir foto + mensaje</button>'+
-                '<button class="btn secondary small" onclick="descargarFotosListo(\''+v.id+'\')">📥 Descargar foto</button>'+
-              '</div>'
+            ? '<button class="btn secondary small full" style="margin-top:6px" onclick="compartirListo(\''+v.id+'\')">📤 Compartir foto + mensaje</button>'
             : '')
         : botonesContacto(numeroWhatsApp(v.celular), saldo > 0.004 ? mensajeRecordatorioPago(v, saldo) : ''));
   }
