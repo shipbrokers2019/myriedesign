@@ -355,7 +355,7 @@
     <div class="row" style="align-items:flex-end">
       <div style="flex:1">
         <label style="margin-top:0">Tasa BCV de hoy (se usa en toda la app)</label>
-        <input type="number" id="tasa-bcv-global" step="0.01" placeholder="0.00" oninput="guardarTasaBcvDia()">
+        <input type="number" id="tasa-bcv-global" step="0.01" placeholder="0.00" oninput="guardarTasaBcvDia('manual')">
       </div>
       <button type="button" class="btn secondary small" style="margin-bottom:0" onclick="cargarTasaBcvAutomatica(true)" title="Traer la tasa oficial BCV de hoy">🔄 Actualizar</button>
     </div>
@@ -857,7 +857,7 @@ function pintarTasaBcvCache(){
       if(inputGlobal && !inputGlobal.value) inputGlobal.value = tasaBcvDia;
       const metaEl = document.getElementById('tasa-bcv-meta');
       if(metaEl && cache.fecha){
-        metaEl.textContent = 'Actualizada el '+fmtFecha(cache.fecha)+(cache.actualizadoPor ? ' por '+cache.actualizadoPor : '');
+        metaEl.textContent = textoMetaTasa(cache);
       }
       const cotTasa = document.getElementById('cot-tasa');
       if(cotTasa && !cotTasa.value){
@@ -869,25 +869,45 @@ function pintarTasaBcvCache(){
     }
   }catch(e){}
 }
+/* El BCV publica una tasa en la mañana y otra en la tarde: se usa siempre la más reciente.
+   La app la vuelve a consultar al abrirse, al volver a la app y cada hora (como mucho una vez
+   cada 10 minutos). Si alguien la puso a mano hoy, no se toca hasta el día siguiente. */
+let tasaBcvDoc = {};            // último documento config/tasaBcv (valor, fecha, origen, ...)
+let ultimaConsultaTasa = 0;     // ms de la última consulta automática a la API
+let tasaBcvEscuchando = false;
+function textoMetaTasa(d){
+  if(!d || !d.fecha) return 'Todavía no se ha cargado.';
+  if(d.origen === 'manual') return 'Puesta a mano el '+fmtFecha(d.fecha)+(d.actualizadoPor ? ' por '+d.actualizadoPor : '')+' · no se actualiza sola hoy';
+  let hora = '';
+  if(d.actualizadoEnMs){
+    hora = ' '+new Date(d.actualizadoEnMs).toLocaleTimeString('es-VE', { hour:'numeric', minute:'2-digit', hour12:true });
+  }
+  return 'Automática · actualizada el '+fmtFecha(d.fecha)+hora;
+}
 function cargarTasaBcvDia(){
   if(!db) return;
   pintarTasaBcvCache();
+  if(!tasaBcvEscuchando){
+    tasaBcvEscuchando = true;
+    setInterval(function(){ cargarTasaBcvAutomatica(false); }, 60*60*1000);
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'visible') cargarTasaBcvAutomatica(false);
+    });
+  }
   db.collection('config').doc('tasaBcv').onSnapshot(function(doc){
     const data = doc.data() || {};
+    data.actualizadoEnMs = (data.actualizadoEn && data.actualizadoEn.toMillis) ? data.actualizadoEn.toMillis() : Date.now();
+    tasaBcvDoc = data;
     tasaBcvDia = Number(data.valor) || 0;
     if(tasaBcvDia && data.fecha){
-      try{ localStorage.setItem('myriedesign_tasaBcv', JSON.stringify({valor:tasaBcvDia, fecha:data.fecha, actualizadoPor:data.actualizadoPor||''})); }catch(e){}
+      try{ localStorage.setItem('myriedesign_tasaBcv', JSON.stringify({valor:tasaBcvDia, fecha:data.fecha, actualizadoPor:data.actualizadoPor||'', origen:data.origen||'', actualizadoEnMs:data.actualizadoEnMs})); }catch(e){}
     }
     const inputGlobal = document.getElementById('tasa-bcv-global');
     if(inputGlobal && document.activeElement !== inputGlobal){
       inputGlobal.value = tasaBcvDia || '';
     }
     const metaEl = document.getElementById('tasa-bcv-meta');
-    if(metaEl){
-      metaEl.textContent = data.fecha
-        ? 'Actualizada el '+fmtFecha(data.fecha)+(data.actualizadoPor ? ' por '+data.actualizadoPor : '')
-        : 'Todavía no se ha cargado.';
-    }
+    if(metaEl) metaEl.textContent = textoMetaTasa(data);
     const cotTasa = document.getElementById('cot-tasa');
     if(cotTasa && !cotTasa.value){
       cotTasa.value = tasaBcvDia || '';
@@ -897,11 +917,8 @@ function cargarTasaBcvDia(){
     if(abTasa && !abTasa.value){
       abTasa.value = tasaBcvDia || '';
     }
-    // Si todavía nadie cargó (ni a mano) la tasa de HOY, intentamos traerla sola
-    // desde una API pública gratuita que republica la tasa oficial del BCV.
-    if(data.fecha !== hoyISO()){
-      cargarTasaBcvAutomatica(false);
-    }
+    // Al abrir la app se busca la tasa más reciente (la función decide si corresponde).
+    cargarTasaBcvAutomatica(false);
   }, function(err){
     console.error('No se pudo leer la Tasa BCV del día:', err);
   });
@@ -913,6 +930,13 @@ function cargarTasaBcvDia(){
    pisar lo que alguien ya puso a mano. Si forzado=true (botón "Actualizar"),
    siempre la trae de nuevo y avisa el resultado. */
 function cargarTasaBcvAutomatica(forzado){
+  if(!forzado){
+    if(!currentUser) return;
+    // Puesta a mano hoy: se respeta hasta mañana.
+    if(tasaBcvDoc.fecha === hoyLocalISO() && tasaBcvDoc.origen === 'manual') return;
+    if(Date.now() - ultimaConsultaTasa < 10*60*1000) return;
+  }
+  ultimaConsultaTasa = Date.now();
   fetch('https://ve.dolarapi.com/v1/dolares/oficial')
     .then(function(res){ return res.json(); })
     .then(function(data){
@@ -920,9 +944,11 @@ function cargarTasaBcvAutomatica(forzado){
       if(!tasa || isNaN(tasa)) throw new Error('Respuesta sin tasa válida');
       const inputGlobal = document.getElementById('tasa-bcv-global');
       if(!inputGlobal) return;
-      if(forzado || document.activeElement !== inputGlobal){
+      // Misma tasa que ya está guardada hoy: no hace falta escribir nada.
+      const igual = Math.abs(tasa - tasaBcvDia) < 0.005 && tasaBcvDoc.fecha === hoyLocalISO();
+      if(forzado || (!igual && document.activeElement !== inputGlobal)){
         inputGlobal.value = tasa.toFixed(2);
-        guardarTasaBcvDia();
+        guardarTasaBcvDia('auto');
       }
       // El botón "Actualizar" es una acción explícita: también refresca la
       // Tasa BCV del Cotizador y de Abonos, aunque ya tuvieran un valor cargado.
@@ -945,7 +971,8 @@ function cargarTasaBcvAutomatica(forzado){
       if(forzado) alert('No se pudo traer la tasa automática ahora mismo. Cargala a mano si hace falta.');
     });
 }
-function guardarTasaBcvDia(){
+/* origen: 'manual' (escrita arriba a mano) o 'auto' (traída de la API). */
+function guardarTasaBcvDia(origen){
   const val = parseFloat(document.getElementById('tasa-bcv-global').value) || 0;
   // Si alguien cambia la tasa de arriba a mano, la Tasa BCV del Cotizador (y la
   // de Abonos, si el modal de venta está abierto) la siguen al toque, salvo que
@@ -965,7 +992,8 @@ function guardarTasaBcvDia(){
     if(!db || !currentUser) return;
     db.collection('config').doc('tasaBcv').set({
       valor: val,
-      fecha: hoyISO(),
+      fecha: hoyLocalISO(),
+      origen: origen === 'auto' ? 'auto' : 'manual',
       actualizadoPor: currentUser.email,
       actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
     });
