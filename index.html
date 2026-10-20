@@ -409,7 +409,9 @@
       <details class="v-sec" id="cot-sec-cliente" open>
         <summary><span class="v-sec-tit">👤 Cliente</span><span class="v-sec-res" id="cot-sum-cliente"></span></summary>
         <label>Referencia (Instagram, apodo, nº de WhatsApp...)</label>
-        <input type="text" id="cot-referencia" placeholder="Ej: IG @juanita / +58 412..." oninput="actualizarResumenesCot()">
+        <input type="text" id="cot-referencia" placeholder="Ej: IG @juanita / Liseth" oninput="actualizarResumenesCot()">
+        <label>Celular (para el WhatsApp)</label>
+        <input type="tel" id="cot-celular" placeholder="Ej: 0414-1234567" oninput="actualizarResumenesCot()">
         <div class="row">
           <div><label>Fecha</label><input type="date" id="cot-fecha" onchange="actualizarResumenesCot()"></div>
           <div><label>Tasa BCV</label><input type="number" id="cot-tasa" step="0.01" oninput="actualizarMontosCotizacion()"></div>
@@ -1338,17 +1340,18 @@ function avisarSiEditandoPiezaCot(){
 /* Resumen de arriba y líneas de cada sección cerrada del Cotizador. */
 function actualizarResumenesCot(){
   const ref = document.getElementById('cot-referencia').value.trim();
+  const cel = document.getElementById('cot-celular').value.trim();
   const fecha = document.getElementById('cot-fecha').value;
   const tasa = parseFloat(document.getElementById('cot-tasa').value) || 0;
   const total = cotizacionItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
   const abonar = parseFloat(document.getElementById('cot-abonar').value) || 0;
   const n = cotizacionItems.length;
   document.getElementById('cot-res-ref').textContent = ref || '(sin referencia)';
-  document.getElementById('cot-res-contacto').textContent = [fecha ? fmtFecha(fecha) : '', tasa ? 'Tasa '+fmtDolar(tasa) : ''].filter(Boolean).join(' · ');
+  document.getElementById('cot-res-contacto').textContent = [cel, fecha ? fmtFecha(fecha) : '', tasa ? 'Tasa '+fmtDolar(tasa) : ''].filter(Boolean).join(' · ');
   document.getElementById('cot-res-total').textContent = '$'+total.toFixed(2);
   document.getElementById('cot-res-abona').textContent = '$'+abonar.toFixed(2);
   document.getElementById('cot-res-restante').textContent = '$'+(total-abonar).toFixed(2);
-  document.getElementById('cot-sum-cliente').textContent = [ref, fecha ? fmtFecha(fecha) : ''].filter(Boolean).join(' · ') || 'Falta completar';
+  document.getElementById('cot-sum-cliente').textContent = [ref, cel, fecha ? fmtFecha(fecha) : ''].filter(Boolean).join(' · ') || 'Falta completar';
   document.getElementById('cot-sum-piezas').textContent = n ? n+' pieza'+(n===1?'':'s')+' · '+descripcionPiezas(cotizacionItems) : 'Sin piezas';
   document.getElementById('cot-sum-montos').textContent = 'Abona $'+abonar.toFixed(2)+(tasa ? ' · Bs. '+fmtBs(abonar*tasa) : '');
 }
@@ -1510,8 +1513,8 @@ function copiarMensajeCotizacion(){ copiarTexto(document.getElementById('cot-men
 function enviarWhatsAppCotizacion(){
   const msg = document.getElementById('cot-mensaje').value;
   if(!msg){ alert('Generá el mensaje primero.'); return; }
-  // Igual que en Hoy: si la referencia tiene un número de teléfono, abre directo el chat de ese cliente.
-  const numero = numeroWhatsApp(document.getElementById('cot-referencia').value);
+  // Igual que en Hoy: con el celular (o un número dentro de la referencia) abre directo el chat del cliente.
+  const numero = numeroWhatsApp(celularCot({ celular: document.getElementById('cot-celular').value, referencia: document.getElementById('cot-referencia').value }));
   window.open(linkWhatsApp(numero, msg.normalize('NFC')), '_blank');
 }
 /* Link para abrir un chat de WhatsApp. En el celular usa wa.me (abre la app); en la
@@ -1542,6 +1545,7 @@ function guardarCotizacion(){
   const totalBsVal = parseFloat(document.getElementById('cot-total-bs').value);
   const data = {
     referencia: referencia,
+    celular: document.getElementById('cot-celular').value.trim(),
     fecha: document.getElementById('cot-fecha').value || hoyISO(),
     tasaBcv: tasa,
     totalBs: isNaN(totalBsVal) ? null : totalBsVal,
@@ -1580,6 +1584,7 @@ function editarCotizacionPendiente(id){
   actualizarBotonesPiezaCot();
   renderItemsCotizacion();
   document.getElementById('cot-referencia').value = c.referencia || '';
+  document.getElementById('cot-celular').value = c.celular || '';
   document.getElementById('cot-fecha').value = c.fecha || hoyISO();
   document.getElementById('cot-tasa').value = c.tasaBcv || '';
   document.getElementById('cot-total-bs').value = (c.totalBs !== undefined && c.totalBs !== null) ? c.totalBs : '';
@@ -1603,6 +1608,7 @@ function cancelarEdicionCotizacion(){
   actualizarBotonesPiezaCot();
   renderItemsCotizacion();
   document.getElementById('cot-referencia').value = '';
+  document.getElementById('cot-celular').value = '';
   document.getElementById('cot-fecha').value = hoyISO();
   document.getElementById('cot-tasa').value = tasaBcvDia || '';
   document.getElementById('cot-total-bs').value = '';
@@ -1674,13 +1680,13 @@ function descargarRespaldoVentasCSV(lista, nombreArchivo){
   URL.revokeObjectURL(url);
 }
 function descargarRespaldoCotizacionesCSV(lista){
-  let csv = 'ID,Status,Referencia,Fecha,Productos,Total USD,Total Bs\n';
+  let csv = 'ID,Status,Referencia,Celular,Fecha,Productos,Total USD,Total Bs\n';
   lista.forEach(function(c){
     const resumenProd = (c.items||[]).map(function(it){
       return tipoPiezaTexto(it.tipo)+' x'+(it.cantidad||1)+' ($'+Number(it.precio||0).toFixed(2)+'): '+camposConEtiqueta(it);
     }).join(' | ');
     const fila = [
-      c.id, c.status||'', c.referencia||'', fmtFecha(c.fecha),
+      c.id, c.status||'', c.referencia||'', c.celular||'', fmtFecha(c.fecha),
       resumenProd, Number(c.total||0).toFixed(2), (c.totalBs!=null?c.totalBs:'')
     ];
     csv += fila.map(function(x){ return '"'+String(x).replace(/"/g,'""')+'"'; }).join(',') + '\n';
@@ -1920,9 +1926,13 @@ function renderClientesLista(){
     return tarjetaCliente(r, '', accion, derecha);
   }).join('');
 }
+/* Número para WhatsApp de una cotización: el campo Celular, o (cotizaciones viejas) la referencia. */
+function celularCot(c){
+  return String(c.celular||'').trim() || c.referencia || '';
+}
 function registroDeCot(c){
   return { tipo:'cot', id:c.id, nombre:c.referencia || '(sin referencia)', total:c.total,
-    fecha:c.fecha || '', items:c.items, celular:c.referencia, saldo:0, status:'Cotizado' };
+    fecha:c.fecha || '', items:c.items, celular:celularCot(c), saldo:0, status:'Cotizado' };
 }
 function registroDeVenta(v){
   return { tipo:'venta', id:v.id, nombre:v.nombre || '(sin nombre)', total:v.total,
@@ -2005,9 +2015,15 @@ function abrirFormVenta(id, cotizacionPrellenada){
     if(cotizacionPrellenada){
       // Todas las piezas de la cotización pasan directo a la lista de la venta.
       ventaItems = JSON.parse(JSON.stringify(cotizacionPrellenada.items || []));
-      // La referencia de la cotización va a Celular si trae un número, y si no a Nombre.
+      // El celular de la cotización va a Celular. La referencia va a Nombre, salvo que
+      // sea un número (cotizaciones viejas sin celular): entonces va a Celular.
       const ref = cotizacionPrellenada.referencia || '';
-      document.getElementById(numeroWhatsApp(ref) ? 'v-celular' : 'v-nombre').value = ref;
+      if(cotizacionPrellenada.celular){
+        document.getElementById('v-celular').value = cotizacionPrellenada.celular;
+        if(!numeroWhatsApp(ref)) document.getElementById('v-nombre').value = ref;
+      } else {
+        document.getElementById(numeroWhatsApp(ref) ? 'v-celular' : 'v-nombre').value = ref;
+      }
       if(cotizacionPrellenada.totalBs !== undefined && cotizacionPrellenada.totalBs !== null){
         document.getElementById('v-total-bs').value = cotizacionPrellenada.totalBs;
       }
@@ -2795,11 +2811,12 @@ function abrirFichaHoy(tipo, id){
     titulo.textContent = c.referencia || '(sin referencia)';
     html += '<div class="hoy-detalle">'+
       lineaFicha('Cotizada', fmtFecha(c.fecha))+
+      (c.celular ? lineaFicha('Celular', escapeHtml(c.celular)) : '')+
       lineaFicha('Total', '$'+Number(c.total||0).toFixed(2))+
       lineaFicha('Seguimiento', fmtFecha(seg)+(c.seguimiento ? '' : ' <small>(automático)</small>'))+
       '<div style="margin-top:8px;color:var(--muted)">'+(c.items||[]).map(resumenPiezaLineas).join('<br><br>')+'</div>'+
       '</div>'+
-      botonesContacto(numeroWhatsApp(c.referencia), mensajeSeguimientoCot(c))+
+      botonesContacto(numeroWhatsApp(celularCot(c)), mensajeSeguimientoCot(c))+
       '<div class="section-title">¿Ya le escribiste?</div>'+
       '<button class="btn full" style="margin-top:8px" onclick="posponerSeguimiento(\''+c.id+'\',2)">✓ Sí · recordar en 2 días</button>'+
       '<button class="btn secondary full" style="margin-top:6px" onclick="posponerSeguimiento(\''+c.id+'\',7)">✓ Sí · recordar en 1 semana</button>'+
