@@ -2771,7 +2771,13 @@ function lineaFicha(etiqueta, valorHtml){
 }
 /* mensaje (opcional): texto que queda escrito en el chat de WhatsApp para revisarlo antes de enviarlo. */
 function botonesContacto(numero, mensaje){
-  if(!numero) return '';
+  // Sin número (ej. referencia "Liseth" o "IG @ana") igual se ofrece el mensaje: WhatsApp
+  // se abre con el texto escrito y el contacto se elige a mano.
+  if(!numero){
+    if(!mensaje) return '';
+    return '<a class="btn small full" style="display:block;text-align:center;margin-top:10px;background:#25D366;color:#fff;text-decoration:none" href="'+linkWhatsApp('', mensaje)+'" target="_blank">💬 WhatsApp (elegir contacto)</a>'+
+      '<small class="hint">No hay número guardado: WhatsApp se abre con el mensaje y elegís el contacto.</small>';
+  }
   const href = linkWhatsApp(numero, mensaje);
   return '<div class="row" style="margin-top:10px">'+
     '<a class="btn small" style="background:#25D366;color:#fff;text-decoration:none" href="'+href+'" target="_blank">💬 WhatsApp</a>'+
