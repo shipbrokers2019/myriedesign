@@ -763,7 +763,7 @@
           <button class="btn secondary small full" style="margin-top:6px" onclick="copiarNumeroVenta(this)">📋 Copiar número del cliente</button>
         </div>
       </div>
-      <button class="btn full" style="background:var(--success);color:#fff" onclick="guardarVenta()">✓ Guardar venta</button>
+      <button id="v-guardar-btn" class="btn full" style="background:var(--success);color:#fff" onclick="guardarVenta()">✓ Guardar venta</button>
       <div class="row" style="margin-top:6px">
         <button class="btn secondary small" onclick="verResumenVenta()">📋 Resumen</button>
         <button id="v-btn-eliminar" class="btn secondary small hidden" style="color:var(--danger)" onclick="eliminarVenta()">Eliminar venta</button>
@@ -1537,7 +1537,16 @@ function linkWhatsApp(numero, mensaje){
   return 'https://web.whatsapp.com/send'+(params.length ? '?'+params.join('&') : '');
 }
 
+/* Mientras se guarda, el botón queda bloqueado: con conexión lenta, tocar Guardar
+   varias veces creaba una cotización (o venta) repetida por cada toque. */
+function bloquearBotonGuardando(boton, guardando, textoNormal){
+  boton.disabled = guardando;
+  boton.style.opacity = guardando ? '.6' : '';
+  boton.textContent = guardando ? '⏳ Guardando...' : textoNormal;
+}
+let guardandoCotizacion = false;
 function guardarCotizacion(){
+  if(guardandoCotizacion) return;
   if(avisarSiEditandoPiezaCot()) return;
   if(cotizacionItems.length === 0){ alert('Agregá al menos una pieza antes de guardar.'); return; }
   const referencia = document.getElementById('cot-referencia').value.trim();
@@ -1558,6 +1567,10 @@ function guardarCotizacion(){
     total: total
   };
   const editandoId = cotizacionEditandoId;
+  const btn = document.getElementById('cot-guardar-btn');
+  const textoBtn = btn.textContent;
+  guardandoCotizacion = true;
+  bloquearBotonGuardando(btn, true);
   let promesa;
   if(editandoId){
     promesa = db.collection('cotizaciones').doc(editandoId).update(data);
@@ -1569,9 +1582,15 @@ function guardarCotizacion(){
     promesa = db.collection('cotizaciones').add(data);
   }
   promesa.then(function(){
+    guardandoCotizacion = false;
+    bloquearBotonGuardando(btn, false, textoBtn);
     cancelarEdicionCotizacion();
     alert(editandoId ? 'Cotización actualizada.' : 'Cotización guardada.');
-  }).catch(function(err){ alert('Error guardando la cotización: '+err.message); });
+  }).catch(function(err){
+    guardandoCotizacion = false;
+    bloquearBotonGuardando(btn, false, textoBtn);
+    alert('Error guardando la cotización: '+err.message);
+  });
 }
 /* Carga una cotización ya guardada en el formulario "Nueva cotización" para
    poder corregirla; guardarCotizacion() actualiza el mismo documento en vez
@@ -2493,7 +2512,9 @@ document.getElementById('modal-venta').addEventListener('input', actualizarResum
 document.getElementById('modal-venta').addEventListener('change', actualizarResumenesVenta);
 
 /* -------------------- 10) GUARDAR / ELIMINAR VENTA -------------------- */
+let guardandoVenta = false;
 function guardarVenta(){
+  if(guardandoVenta) return;
   const nombre = document.getElementById('v-nombre').value.trim();
   if(!nombre){ alert('El nombre del cliente es obligatorio.'); return; }
   if(piezaEditando !== null){ alert('Estás editando una pieza: tocá "Guardar cambios de la pieza" o "Cancelar" antes de guardar la venta.'); return; }
@@ -2526,6 +2547,13 @@ function guardarVenta(){
     return;
   }
 
+  const btn = document.getElementById('v-guardar-btn');
+  guardandoVenta = true;
+  bloquearBotonGuardando(btn, true);
+  const listoGuardar = function(){
+    guardandoVenta = false;
+    bloquearBotonGuardando(btn, false, '✓ Guardar venta');
+  };
   let promesa;
   if(ventaActualId){
     promesa = db.collection('ventas').doc(ventaActualId).update(data);
@@ -2535,12 +2563,13 @@ function guardarVenta(){
     promesa = db.collection('ventas').add(data);
   }
   promesa.then(function(){
+    listoGuardar();
     if(cotizacionOrigenId){
       db.collection('cotizaciones').doc(cotizacionOrigenId).update({ status: 'Convertida' });
       cotizacionOrigenId = null;
     }
     cerrarModalVenta();
-  }).catch(function(err){ alert('Error guardando venta: '+err.message); });
+  }).catch(function(err){ listoGuardar(); alert('Error guardando venta: '+err.message); });
 }
 function eliminarVenta(){
   if(!ventaActualId) return;
