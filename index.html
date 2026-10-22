@@ -1589,6 +1589,11 @@ function guardarCotizacion(){
   }).catch(function(err){
     guardandoCotizacion = false;
     bloquearBotonGuardando(btn, false, textoBtn);
+    if(err && err.code === 'not-found'){
+      cancelarEdicionCotizacion();
+      alert('Esta cotización ya no existe (se eliminó o se convirtió en venta). No se guardaron los cambios.');
+      return;
+    }
     alert('Error guardando la cotización: '+err.message);
   });
 }
@@ -1625,8 +1630,10 @@ function eliminarCotizacion(){
   const id = cotizacionEditandoId;
   if(!id) return;
   if(!confirm('¿Eliminar esta cotización? Esta acción no se puede deshacer.')) return;
+  // El formulario se vacía al toque: si quedaba cargado mientras Firebase confirmaba,
+  // tocar Guardar intentaba actualizar una cotización ya borrada ("No document to update").
+  cancelarEdicionCotizacion();
   db.collection('cotizaciones').doc(id).delete().then(function(){
-    cancelarEdicionCotizacion();
     alert('Cotización eliminada.');
   }).catch(function(err){ alert('Error eliminando la cotización: '+err.message); });
 }
@@ -1665,6 +1672,12 @@ function cargarCotizacionesPendientes(){
       return tb - ta;
     });
     hoyCotizacionesListas = true;
+    // Si la cotización que se está editando ya no existe (se borró o se convirtió en venta,
+    // por ejemplo desde el otro celular), se sale de la edición para no guardar sobre ella.
+    if(cotizacionEditandoId && !guardandoCotizacion &&
+       !cotizacionesCache.some(function(c){ return c.id === cotizacionEditandoId; })){
+      cancelarEdicionCotizacion();
+    }
     renderCotizacionesPendientes();
   }, function(err){
     console.error('No se pudieron cargar las cotizaciones pendientes:', err);
