@@ -512,7 +512,10 @@
       <!-- Botones fijos abajo -->
       <div class="v-footer cot-footer">
         <button id="cot-guardar-btn" class="btn full" style="background:var(--success);color:#fff" onclick="guardarCotizacion()">✓ Guardar cotización</button>
-        <button class="btn secondary small full" style="margin-top:6px" onclick="generarMensajeCotizacion()">💬 Generar mensaje para el cliente</button>
+        <div class="row" style="margin-top:6px">
+          <button class="btn secondary small" onclick="generarMensajeCotizacion()">💬 Generar mensaje</button>
+          <button id="cot-btn-eliminar" class="btn secondary small hidden" style="color:var(--danger)" onclick="eliminarCotizacion()">Eliminar cotización</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1594,9 +1597,19 @@ function editarCotizacionPendiente(id){
   actualizarMontosCotizacion();
   document.getElementById('cot-guardar-btn').textContent = '✓ Guardar cambios';
   document.getElementById('cot-cancelar-edicion').classList.remove('hidden');
-  document.getElementById('cot-titulo').textContent = 'Editando cotización';
+  document.getElementById('cot-titulo').textContent = 'Editar cotización';
+  document.getElementById('cot-btn-eliminar').classList.remove('hidden');
   abrirSeccionesCot(true);
   actualizarResumenesCot();
+}
+function eliminarCotizacion(){
+  const id = cotizacionEditandoId;
+  if(!id) return;
+  if(!confirm('¿Eliminar esta cotización? Esta acción no se puede deshacer.')) return;
+  db.collection('cotizaciones').doc(id).delete().then(function(){
+    cancelarEdicionCotizacion();
+    alert('Cotización eliminada.');
+  }).catch(function(err){ alert('Error eliminando la cotización: '+err.message); });
 }
 function cancelarEdicionCotizacion(){
   cotizacionEditandoId = null;
@@ -1617,6 +1630,7 @@ function cancelarEdicionCotizacion(){
   document.getElementById('cot-guardar-btn').textContent = '✓ Guardar cotización';
   document.getElementById('cot-cancelar-edicion').classList.add('hidden');
   document.getElementById('cot-titulo').textContent = 'Nueva cotización';
+  document.getElementById('cot-btn-eliminar').classList.add('hidden');
   abrirSeccionesCot(false);
   actualizarMontosCotizacion();
 }
@@ -1919,9 +1933,10 @@ function renderClientesLista(){
   // En Ventas la tarjeta abre el formulario de venta: la cotización ya prellenada
   // para convertirla, o la venta para editarla (la ficha de seguimiento es solo de Hoy).
   el.innerHTML = filtrados.map(function(r){
-    const accion = r.tipo === 'cot' ? 'convertirEnVenta(\''+r.id+'\')' : 'abrirFormVenta(\''+r.id+'\')';
+    // Cotización: tocar la tarjeta la abre para editar en Cotizar; "Crear Venta" la convierte.
+    const accion = r.tipo === 'cot' ? 'irAEditarCotizacion(\''+r.id+'\')' : 'abrirFormVenta(\''+r.id+'\')';
     const derecha = r.tipo === 'cot'
-      ? '<button type="button" class="pill naranja pill-accion" onclick="event.stopPropagation();'+accion+'">Crear Venta</button>'
+      ? '<button type="button" class="pill naranja pill-accion" onclick="event.stopPropagation();convertirEnVenta(\''+r.id+'\')">Crear Venta</button>'
       : '';
     return tarjetaCliente(r, '', accion, derecha);
   }).join('');
