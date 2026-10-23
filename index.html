@@ -392,8 +392,10 @@
     <div class="card">
       <h2 id="cot-titulo">Nueva cotización</h2>
       <small class="hint">Todavía no hace falta el nombre del cliente. Cuando confirme la compra, la convertís en venta y ahí pedís sus datos.</small>
-      <button type="button" id="cot-cancelar-edicion" class="btn secondary full hidden" style="margin-top:8px" onclick="cancelarEdicionCotizacion()">✕ Cancelar edición y empezar una nueva</button>
 
+      <!-- El formulario se muda a la ventana "Editar cotización" mientras se edita una guardada;
+           Cotizar queda solo para crear cotizaciones nuevas. -->
+      <div id="cot-form-cuerpo">
       <!-- Resumen fijo arriba: a quién se cotiza y cuánto. -->
       <div class="v-resumen" style="margin-top:10px">
         <div class="v-res-nombre" id="cot-res-ref">(sin referencia)</div>
@@ -516,6 +518,7 @@
           <button class="btn secondary small" onclick="generarMensajeCotizacion()">💬 Generar mensaje</button>
           <button id="cot-btn-eliminar" class="btn secondary small hidden" style="color:var(--danger)" onclick="eliminarCotizacion()">Eliminar cotización</button>
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -772,6 +775,17 @@
   </div>
 </div>
 
+<!-- ====================== MODAL: EDITAR COTIZACIÓN ====================== -->
+<div id="modal-cot" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Editar cotización</h2>
+      <button class="close-x" onclick="cancelarEdicionCotizacion()">✕</button>
+    </div>
+    <div id="modal-cot-cuerpo"></div>
+  </div>
+</div>
+
 <!-- ====================== MODAL: FICHA RÁPIDA (pestaña Hoy) ====================== -->
 <div id="modal-hoy" class="modal-overlay hidden" onclick="if(event.target===this) cerrarFichaHoy()">
   <div class="modal-box">
@@ -959,7 +973,7 @@ function cargarTasaBcvAutomatica(forzado){
       // Tasa BCV del Cotizador y de Abonos, aunque ya tuvieran un valor cargado.
       if(forzado){
         const cotTasa = document.getElementById('cot-tasa');
-        if(cotTasa && document.activeElement !== cotTasa){
+        if(cotTasa && document.activeElement !== cotTasa && !cotizacionEditandoId){
           cotTasa.value = tasa.toFixed(2);
           actualizarMontosCotizacion();
         }
@@ -983,7 +997,7 @@ function guardarTasaBcvDia(origen){
   // de Abonos, si el modal de venta está abierto) la siguen al toque, salvo que
   // esté escribiendo ahí mismo en ese momento.
   const cotTasa = document.getElementById('cot-tasa');
-  if(cotTasa && document.activeElement !== cotTasa){
+  if(cotTasa && document.activeElement !== cotTasa && !cotizacionEditandoId){
     cotTasa.value = val || '';
     actualizarMontosCotizacion();
   }
@@ -1597,12 +1611,24 @@ function guardarCotizacion(){
     alert('Error guardando la cotización: '+err.message);
   });
 }
-/* Carga una cotización ya guardada en el formulario "Nueva cotización" para
-   poder corregirla; guardarCotizacion() actualiza el mismo documento en vez
-   de crear uno nuevo mientras esté activa esta edición. */
+/* Abre una cotización ya guardada en la ventana "Editar cotización" (desde Ventas u Hoy).
+   Usa el mismo formulario de Cotizar, que se muda a la ventana mientras dura la edición;
+   guardarCotizacion() actualiza el mismo documento en vez de crear uno nuevo. */
+function moverFormCot(aVentana){
+  const cuerpo = document.getElementById('cot-form-cuerpo');
+  const destino = aVentana ? document.getElementById('modal-cot-cuerpo') : document.querySelector('#tab-cotizar .card');
+  if(cuerpo.parentNode !== destino) destino.appendChild(cuerpo);
+  // Los botones de abajo: en la ventana quedan fijos al pie de la ventana, en Cotizar encima de las pestañas.
+  cuerpo.querySelector('.v-footer').classList.toggle('cot-footer', !aVentana);
+  document.getElementById('modal-cot').classList.toggle('hidden', !aVentana);
+}
 function editarCotizacionPendiente(id){
   const c = cotizacionesCache.find(function(x){ return x.id === id; });
   if(!c) return;
+  // Una cotización nueva a medio hacer en Cotizar se perdería al usar el mismo formulario.
+  const hayBorrador = !cotizacionEditandoId && (cotizacionItems.length > 0 ||
+    document.getElementById('cot-referencia').value.trim() || document.getElementById('cot-celular').value.trim());
+  if(hayBorrador && !confirm('Tenés una cotización nueva sin guardar en Cotizar. Si editás esta, se pierde lo que estabas cargando. ¿Continuar?')) return;
   cotizacionEditandoId = id;
   cotizacionItems = (c.items || []).slice();
   cotFormPiezaAbierto = false;
@@ -1620,11 +1646,11 @@ function editarCotizacionPendiente(id){
   document.getElementById('cot-mensaje-wrap').classList.add('hidden');
   actualizarMontosCotizacion();
   document.getElementById('cot-guardar-btn').textContent = '✓ Guardar cambios';
-  document.getElementById('cot-cancelar-edicion').classList.remove('hidden');
-  document.getElementById('cot-titulo').textContent = 'Editar cotización';
   document.getElementById('cot-btn-eliminar').classList.remove('hidden');
   abrirSeccionesCot(true);
   actualizarResumenesCot();
+  moverFormCot(true);
+  document.querySelector('#modal-cot .modal-box').scrollTop = 0;
 }
 function eliminarCotizacion(){
   const id = cotizacionEditandoId;
@@ -1654,9 +1680,8 @@ function cancelarEdicionCotizacion(){
   document.getElementById('cot-abonar').value = '';
   document.getElementById('cot-mensaje-wrap').classList.add('hidden');
   document.getElementById('cot-guardar-btn').textContent = '✓ Guardar cotización';
-  document.getElementById('cot-cancelar-edicion').classList.add('hidden');
-  document.getElementById('cot-titulo').textContent = 'Nueva cotización';
   document.getElementById('cot-btn-eliminar').classList.add('hidden');
+  moverFormCot(false);
   abrirSeccionesCot(false);
   actualizarMontosCotizacion();
 }
@@ -2934,9 +2959,7 @@ function guardarFechaSeguimiento(id){
 }
 function irAEditarCotizacion(id){
   cerrarFichaHoy();
-  mostrarTab('cotizar');
   editarCotizacionPendiente(id);
-  window.scrollTo(0,0);
 }
 function copiarNumeroHoy(numero, boton){
   const listo = function(){ boton.textContent = '✓ Copiado'; };
