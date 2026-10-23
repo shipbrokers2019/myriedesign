@@ -392,6 +392,8 @@
     <div class="card">
       <h2 id="cot-titulo">Nueva cotización</h2>
       <small class="hint">Todavía no hace falta el nombre del cliente. Cuando confirme la compra, la convertís en venta y ahí pedís sus datos.</small>
+      <!-- Después de guardar, la cotización queda en pantalla (para generar el mensaje); esto empieza otra. -->
+      <button type="button" id="cot-btn-nueva" class="btn secondary full hidden" style="margin-top:8px" onclick="cancelarEdicionCotizacion()">➕ Empezar una cotización nueva</button>
 
       <!-- El formulario se muda a la ventana "Editar cotización" mientras se edita una guardada;
            Cotizar queda solo para crear cotizaciones nuevas. -->
@@ -1595,11 +1597,23 @@ function guardarCotizacion(){
     data.creadoEn = firebase.firestore.FieldValue.serverTimestamp();
     promesa = db.collection('cotizaciones').add(data);
   }
-  promesa.then(function(){
+  const enVentana = !document.getElementById('modal-cot').classList.contains('hidden');
+  promesa.then(function(ref){
     guardandoCotizacion = false;
     bloquearBotonGuardando(btn, false, textoBtn);
-    cancelarEdicionCotizacion();
-    alert(editandoId ? 'Cotización actualizada.' : 'Cotización guardada.');
+    if(enVentana){
+      // Editar cotización (ventana): se cierra al guardar.
+      cancelarEdicionCotizacion();
+      alert('Cotización actualizada.');
+      return;
+    }
+    // En Cotizar la cotización queda en pantalla para generar el mensaje. Desde ahora
+    // "Guardar" actualiza esa misma cotización (no crea otra).
+    if(!editandoId) cotizacionEditandoId = ref.id;
+    btn.textContent = '✓ Guardar cambios';
+    document.getElementById('cot-titulo').textContent = 'Cotización guardada ✓';
+    document.getElementById('cot-btn-nueva').classList.remove('hidden');
+    alert(editandoId ? 'Cambios guardados.' : 'Cotización guardada. Ya podés generar el mensaje.');
   }).catch(function(err){
     guardandoCotizacion = false;
     bloquearBotonGuardando(btn, false, textoBtn);
@@ -1681,6 +1695,8 @@ function cancelarEdicionCotizacion(){
   document.getElementById('cot-mensaje-wrap').classList.add('hidden');
   document.getElementById('cot-guardar-btn').textContent = '✓ Guardar cotización';
   document.getElementById('cot-btn-eliminar').classList.add('hidden');
+  document.getElementById('cot-titulo').textContent = 'Nueva cotización';
+  document.getElementById('cot-btn-nueva').classList.add('hidden');
   moverFormCot(false);
   abrirSeccionesCot(false);
   actualizarMontosCotizacion();
