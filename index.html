@@ -349,7 +349,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <!-- Versión: se cambia en cada actualización, para saber si el celular ya tiene la última. -->
-      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 29/10/26</small>
+      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 29/10/26 b</small>
       <button class="btn secondary small" onclick="doLogout()">Salir</button>
     </div>
   </div>
@@ -812,7 +812,10 @@
     </div>
     <textarea id="resumen-texto" class="msg-box" style="min-height:320px" readonly></textarea>
     <div id="resumen-fotos" style="margin-top:10px"></div>
-    <button class="btn full" style="margin-top:8px" onclick="copiarResumen()">📋 Copiar resumen</button>
+    <div class="row" style="margin-top:8px">
+      <button class="btn secondary" onclick="copiarResumen()">📋 Copiar resumen</button>
+      <button class="btn" style="background:#25D366;color:#fff" onclick="enviarResumenModalWhatsApp()">💬 WhatsApp</button>
+    </div>
   </div>
 </div>
 
@@ -1971,9 +1974,11 @@ function fechaCorta(iso){
   const p = (iso||'').split('-');
   return p.length === 3 ? p[2]+'/'+p[1] : '';
 }
-function pillWhatsApp(numero){
+/* ventaId (opcional): en las tarjetas de venta, WA abre el chat con el resumen de la venta ya escrito. */
+function pillWhatsApp(numero, ventaId){
   if(!numero) return '';
-  return '<a class="pill wa" href="'+linkWhatsApp(numero, '')+'" target="_blank" onclick="event.stopPropagation()">WA</a>';
+  const click = ventaId ? 'event.stopPropagation();event.preventDefault();waResumenVenta(\''+ventaId+'\')' : 'event.stopPropagation()';
+  return '<a class="pill wa" href="'+linkWhatsApp(numero, '')+'" target="_blank" onclick="'+click+'">WA</a>';
 }
 function renderClientesLista(){
   const el = document.getElementById('ventas-list');
@@ -2045,7 +2050,7 @@ function tarjetaCliente(r, pillsExtra, accion, derecha){
     else pills += '<span class="pill vendido">Vendido</span>';
     if(r.saldo > 0.004) pills += '<span class="pill debe">Debe $'+r.saldo.toFixed(2)+'</span>';
   }
-  pills += (pillsExtra || '') + pillWhatsApp(numeroWhatsApp(r.celular));
+  pills += (pillsExtra || '') + pillWhatsApp(numeroWhatsApp(r.celular), r.tipo === 'venta' ? r.id : '');
   return '<div class="cli-card" onclick="'+(accion || 'abrirFichaHoy(\''+r.tipo+'\',\''+r.id+'\')')+'">'+
     '<div class="fila"><span class="nombre">'+escapeHtml(r.nombre)+'</span><span class="monto">$'+Number(r.total||0).toFixed(2)+'</span></div>'+
     '<div class="fila"><span class="desc">'+escapeHtml(descripcionPiezas(r.items))+'</span><span class="fecha">'+fechaCorta(r.fecha)+'</span></div>'+
@@ -2649,15 +2654,20 @@ function renderGaleriaFotos(){
   const html = grupo('📷 Producto terminado', ventaFotos.productoFinal) + grupo('📦 Guía de envío', ventaFotos.guiaEnvio);
   document.getElementById('resumen-fotos').innerHTML = html;
 }
-function verResumenVenta(){
-  const nombre = document.getElementById('v-nombre').value.trim() || '(sin nombre)';
-  const cedula = document.getElementById('v-id').value.trim() || '-';
-  const celular = document.getElementById('v-celular').value.trim() || '-';
-  const empresaEnvio = document.getElementById('v-empresa-envio').value.trim();
-  const direccionEnvio = document.getElementById('v-direccion-envio').value.trim();
-  const fechaVenta = document.getElementById('v-fecha-venta').value;
-  const fechaEntrega = document.getElementById('v-fecha-entrega').value;
-  const status = statusTexto(document.getElementById('v-status').value);
+/* Texto del resumen de una venta. d: { nombre, cedula, celular, empresaEnvio, direccionEnvio,
+   fechaVenta, fechaEntrega, status, items, abonos }. Lo usan el botón "📋 Resumen" (venta abierta)
+   y la pastilla WA de las tarjetas (venta guardada), que lo deja escrito en WhatsApp. */
+function textoResumenVenta(d){
+  const nombre = d.nombre || '(sin nombre)';
+  const cedula = d.cedula || '-';
+  const celular = d.celular || '-';
+  const empresaEnvio = d.empresaEnvio || '';
+  const direccionEnvio = d.direccionEnvio || '';
+  const fechaVenta = d.fechaVenta;
+  const fechaEntrega = d.fechaEntrega;
+  const status = statusTexto(d.status);
+  const ventaItems = d.items || [];
+  const ventaAbonos = d.abonos || [];
   const total = ventaItems.reduce(function(s,it){ return s + it.precio*it.cantidad; }, 0);
   const abonado = ventaAbonos.reduce(function(s,a){ return s + Number(a.monto); }, 0);
   const saldo = total - abonado;
@@ -2708,10 +2718,34 @@ function verResumenVenta(){
   if(empresaEnvio || direccionEnvio) txt += '\n';
   if(empresaEnvio) txt += empresaEnvio+'\n';
   if(direccionEnvio) txt += direccionEnvio+'\n';
-
-  document.getElementById('resumen-texto').value = txt;
+  return txt;
+}
+function datosResumenModal(){
+  const val = function(id){ return document.getElementById(id).value.trim(); };
+  return { nombre: val('v-nombre'), cedula: val('v-id'), celular: val('v-celular'),
+    empresaEnvio: val('v-empresa-envio'), direccionEnvio: val('v-direccion-envio'),
+    fechaVenta: val('v-fecha-venta'), fechaEntrega: val('v-fecha-entrega'),
+    status: document.getElementById('v-status').value, items: ventaItems, abonos: ventaAbonos };
+}
+function verResumenVenta(){
+  document.getElementById('resumen-texto').value = textoResumenVenta(datosResumenModal());
   renderGaleriaFotos();
   document.getElementById('modal-resumen').classList.remove('hidden');
+}
+/* Abre WhatsApp con el resumen ya escrito: en el chat del cliente si hay celular. */
+function enviarResumenWhatsApp(celular, texto){
+  window.open(linkWhatsApp(numeroWhatsApp(celular), texto.normalize('NFC')), '_blank');
+}
+function enviarResumenModalWhatsApp(){
+  enviarResumenWhatsApp(document.getElementById('v-celular').value, document.getElementById('resumen-texto').value);
+}
+// Pastilla WA de una tarjeta de venta (lista de Ventas y Hoy).
+function waResumenVenta(id){
+  const v = todasLasVentas.find(function(x){ return x.id === id; });
+  if(!v) return;
+  enviarResumenWhatsApp(v.celular, textoResumenVenta({ nombre: v.nombre, cedula: v.cedula, celular: v.celular,
+    empresaEnvio: v.empresaEnvio, direccionEnvio: v.direccionEnvio, fechaVenta: v.fechaVenta,
+    fechaEntrega: v.fechaEntrega, status: v.status, items: v.items, abonos: v.abonos }));
 }
 function copiarResumen(){ copiarTexto(document.getElementById('resumen-texto')); }
 
