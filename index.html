@@ -349,7 +349,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <!-- Versión: se cambia en cada actualización, para saber si el celular ya tiene la última. -->
-      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 28/10/26</small>
+      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 29/10/26</small>
       <button class="btn secondary small" onclick="doLogout()">Salir</button>
     </div>
   </div>
@@ -2689,19 +2689,20 @@ function verResumenVenta(){
       if(it.dijes) txt += '    Dijes:\n    ✅'+it.dijes+'\n';
     }
     if(it.notas) txt += '    Notas: '+it.notas+'\n';
-    txt += '    Precio $'+Math.round(it.precio)+' c/u\n';
+    txt += '    Precio $'+fmtDolar(it.precio)+' c/u\n';
   });
-  txt += '\nTotal: $'+Math.round(total)+'\n';
+  // Montos exactos (ej. $14.50), sin redondear.
+  txt += '\nTotal: $'+fmtDolar(total)+'\n';
   txt += '\nAbonos:\n';
   if(ventaAbonos.length === 0){ txt += '  (sin abonos registrados)\n'; }
   ventaAbonos.forEach(function(a){
-    txt += '  '+fmtFecha(a.fecha)+' - $'+Math.round(Number(a.monto))+'\n';
+    txt += '  '+fmtFecha(a.fecha)+' - $'+fmtDolar(a.monto)+'\n';
     if(a.tasaBcv){
       txt += '  (Bs. '+Number(a.montoBs||0).toFixed(2)+' / tasa '+Number(a.tasaBcv).toFixed(2)+')\n';
     }
   });
-  txt += '\nTotal abonado: $'+Math.round(abonado)+'\n';
-  txt += 'Saldo pendiente: $'+Math.round(saldo)+'\n\n';
+  txt += '\nTotal abonado: $'+fmtDolar(abonado)+'\n';
+  txt += 'Saldo pendiente: $'+fmtDolar(saldo)+'\n\n';
   txt += 'Status: '+status+'\n';
   txt += 'Fecha aproximada de entrega: '+fmtFecha(fechaEntrega)+'\n';
   if(empresaEnvio || direccionEnvio) txt += '\n';
