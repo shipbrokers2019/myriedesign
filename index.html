@@ -347,7 +347,11 @@
       <div class="brand">✦ Myriedesign</div>
       <div class="user" id="user-email-label"></div>
     </div>
-    <button class="btn secondary small" onclick="doLogout()">Salir</button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <!-- Versión: se cambia en cada actualización, para saber si el celular ya tiene la última. -->
+      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 28/10/26</small>
+      <button class="btn secondary small" onclick="doLogout()">Salir</button>
+    </div>
   </div>
 
   <!-- ---------- TASA BCV DEL DÍA (compartida, se usa en toda la app) ---------- -->
