@@ -349,7 +349,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <!-- Versión: se cambia en cada actualización, para saber si el celular ya tiene la última. -->
-      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 29/10/26 b</small>
+      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 03/11/26</small>
       <button class="btn secondary small" onclick="doLogout()">Salir</button>
     </div>
   </div>
@@ -2676,44 +2676,38 @@ function textoResumenVenta(d){
   txt += 'Cédula/ID: '+cedula+'\n';
   txt += 'Celular: '+celular+'\n';
   txt += 'Fecha de venta: '+fmtFecha(fechaVenta)+'\n\n';
-  txt += 'Pieza(s):\n';
+  // Formato pedido por Myried (03/11/2026): una pieza tras otra, sin sangría, y al final
+  // total, abonado, saldo, entrega aproximada y los datos de envío.
   ventaItems.forEach(function(it, idx){
-    txt += '  Pieza '+(idx+1)+':\n';
-    txt += '    '+tipoPiezaTexto(it.tipo)+'\n';
-    if(it.cadena) txt += '    Pieza: '+it.cadena+'\n';
+    txt += 'Pieza '+(idx+1)+':\n';
+    txt += tipoPiezaTexto(it.tipo)+'\n';
+    if(it.cadena) txt += 'Pieza: '+it.cadena+'\n';
     if(it.tipo === 'grabado'){
-      if(it.tipoMedalla) txt += '    Tipo: '+it.tipoMedalla+'\n';
-      txt += '    Cara Frontal: '+it.caraFrontal+'\n';
-      if(it.tipografiaFrontal) txt += '    Tipografía: '+it.tipografiaFrontal+'\n';
-      if(it.caraPosterior) txt += '    Cara Posterior: '+it.caraPosterior+'\n';
-      if(it.tipografiaPosterior) txt += '    Tipografía: '+it.tipografiaPosterior+'\n';
+      if(it.tipoMedalla) txt += 'Tipo: '+it.tipoMedalla+'\n';
+      txt += 'Cara Frontal: '+(it.caraFrontal || 'Imagen')+'\n';
+      if(it.tipografiaFrontal) txt += 'Tipografía: '+it.tipografiaFrontal+'\n';
+      if(it.caraPosterior) txt += 'Cara Posterior: '+it.caraPosterior+'\n';
+      if(it.tipografiaPosterior) txt += 'Tipografía: '+it.tipografiaPosterior+'\n';
     } else if(it.tipo === 'bisuteria'){
-      if(it.tipoBisuteria) txt += '    Tipo: '+it.tipoBisuteria+'\n';
+      if(it.tipoBisuteria) txt += 'Tipo: '+it.tipoBisuteria+'\n';
     } else {
-      txt += '    Nombre:\n    ✅'+it.nombre+'\n';
-      if(it.tipografiaNombre) txt += '    Tipografía: '+it.tipografiaNombre+'\n';
+      txt += 'Nombre:\n✅'+it.nombre+'\n';
+      if(it.tipografiaNombre) txt += 'Tipografía: '+it.tipografiaNombre+'\n';
       if(it.nombreAdicional){
-        txt += '    Nombre adicional:\n    ✅'+it.nombreAdicional+'\n';
-        if(it.tipografiaAdicional) txt += '    Tipografía: '+it.tipografiaAdicional+'\n';
+        txt += 'Nombre adicional:\n✅'+it.nombreAdicional+'\n';
+        if(it.tipografiaAdicional) txt += 'Tipografía: '+it.tipografiaAdicional+'\n';
       }
-      if(it.dijes) txt += '    Dijes:\n    ✅'+it.dijes+'\n';
+      // "✅Dije corona..." (sin repetir "Dije" si ya viene escrito así).
+      if(it.dijes) txt += '✅'+(/^dije/i.test(it.dijes.trim()) ? '' : 'Dije ')+it.dijes.trim()+'\n';
     }
-    if(it.notas) txt += '    Notas: '+it.notas+'\n';
-    txt += '    Precio $'+fmtDolar(it.precio)+' c/u\n';
+    if(it.notas) txt += 'Notas: '+it.notas+'\n';
+    if((it.cantidad||1) > 1) txt += 'Cantidad: '+it.cantidad+'\n';
+    txt += 'Precio $'+fmtDolar(it.precio)+' c/u\n\n';
   });
   // Montos exactos (ej. $14.50), sin redondear.
-  txt += '\nTotal: $'+fmtDolar(total)+'\n';
-  txt += '\nAbonos:\n';
-  if(ventaAbonos.length === 0){ txt += '  (sin abonos registrados)\n'; }
-  ventaAbonos.forEach(function(a){
-    txt += '  '+fmtFecha(a.fecha)+' - $'+fmtDolar(a.monto)+'\n';
-    if(a.tasaBcv){
-      txt += '  (Bs. '+Number(a.montoBs||0).toFixed(2)+' / tasa '+Number(a.tasaBcv).toFixed(2)+')\n';
-    }
-  });
-  txt += '\nTotal abonado: $'+fmtDolar(abonado)+'\n';
+  txt += 'Total: $'+fmtDolar(total)+'\n';
+  txt += 'Abonos: $'+fmtDolar(abonado)+'\n';
   txt += 'Saldo pendiente: $'+fmtDolar(saldo)+'\n\n';
-  txt += 'Status: '+status+'\n';
   txt += 'Fecha aproximada de entrega: '+fmtFecha(fechaEntrega)+'\n';
   if(empresaEnvio || direccionEnvio) txt += '\n';
   if(empresaEnvio) txt += empresaEnvio+'\n';
