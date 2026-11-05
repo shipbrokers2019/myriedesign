@@ -349,7 +349,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <!-- Versión: se cambia en cada actualización, para saber si el celular ya tiene la última. -->
-      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 03/11/26</small>
+      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 05/11/26</small>
       <button class="btn secondary small" onclick="doLogout()">Salir</button>
     </div>
   </div>
@@ -406,6 +406,7 @@
       <div class="v-resumen" style="margin-top:10px">
         <div class="v-res-nombre" id="cot-res-ref">(sin referencia)</div>
         <div class="v-res-contacto" id="cot-res-contacto"></div>
+        <div id="cot-aviso-tasa" class="hidden" style="margin-top:6px;font-size:.78rem;color:#ffb84d"></div>
         <div class="v-res-montos">
           <span>Total <b id="cot-res-total">$0.00</b></span>
           <span>Abona <b id="cot-res-abona" style="color:var(--success)">$0.00</b></span>
@@ -1661,6 +1662,14 @@ function editarCotizacionPendiente(id){
   document.getElementById('cot-celular').value = c.celular || '';
   document.getElementById('cot-fecha').value = c.fecha || hoyISO();
   document.getElementById('cot-tasa').value = c.tasaBcv || '';
+  // Cotización de otro día: el monto en Bs. ya no vale, se recalcula con la tasa de hoy.
+  const avisoTasa = document.getElementById('cot-aviso-tasa');
+  avisoTasa.classList.add('hidden');
+  if(tasaBcvDia && c.fecha && c.fecha !== hoyLocalISO() && Math.abs(tasaBcvDia - Number(c.tasaBcv||0)) >= 0.005){
+    document.getElementById('cot-tasa').value = tasaBcvDia;
+    avisoTasa.textContent = '🔄 Tasa actualizada: '+(c.tasaBcv ? fmtDolar(c.tasaBcv)+' ('+fmtFecha(c.fecha)+')' : 'sin tasa')+' → hoy '+fmtDolar(tasaBcvDia)+'. Los Bs. ya están recalculados.';
+    avisoTasa.classList.remove('hidden');
+  }
   document.getElementById('cot-total-bs').value = (c.totalBs !== undefined && c.totalBs !== null) ? c.totalBs : '';
   abonarManual = true;
   document.getElementById('cot-abonar').value = (c.abonar !== undefined && c.abonar !== null) ? c.abonar : '';
@@ -1704,6 +1713,7 @@ function cancelarEdicionCotizacion(){
   document.getElementById('cot-btn-eliminar').classList.add('hidden');
   document.getElementById('cot-titulo').textContent = 'Nueva cotización';
   document.getElementById('cot-btn-nueva').classList.add('hidden');
+  document.getElementById('cot-aviso-tasa').classList.add('hidden');
   moverFormCot(false);
   abrirSeccionesCot(false);
   actualizarMontosCotizacion();
@@ -2121,15 +2131,21 @@ function abrirFormVenta(id, cotizacionPrellenada){
       } else {
         document.getElementById(numeroWhatsApp(ref) ? 'v-celular' : 'v-nombre').value = ref;
       }
-      if(cotizacionPrellenada.totalBs !== undefined && cotizacionPrellenada.totalBs !== null){
+      // El cliente paga hoy: el abono y el Total Bs. van con la fecha y la tasa de HOY,
+      // aunque la cotización sea de otro día (los dólares no cambian). Sin tasa del día
+      // cargada se usa la de la cotización.
+      const tasaHoy = tasaBcvDia || cotizacionPrellenada.tasaBcv || 0;
+      if(tasaHoy){
+        document.getElementById('v-total-bs').value = (Number(cotizacionPrellenada.total||0)*tasaHoy).toFixed(2);
+      } else if(cotizacionPrellenada.totalBs !== undefined && cotizacionPrellenada.totalBs !== null){
         document.getElementById('v-total-bs').value = cotizacionPrellenada.totalBs;
       }
       if(cotizacionPrellenada.abonar > 0){
         ventaAbonos.push({
-          fecha: cotizacionPrellenada.fecha || fv,
-          tasaBcv: cotizacionPrellenada.tasaBcv || 0,
+          fecha: fv,
+          tasaBcv: tasaHoy,
           monto: cotizacionPrellenada.abonar,
-          montoBs: cotizacionPrellenada.abonarBs || 0
+          montoBs: tasaHoy ? cotizacionPrellenada.abonar*tasaHoy : (cotizacionPrellenada.abonarBs || 0)
         });
       }
     }
