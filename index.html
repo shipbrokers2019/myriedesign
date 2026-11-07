@@ -349,7 +349,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <!-- Versión: se cambia en cada actualización, para saber si el celular ya tiene la última. -->
-      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 05/11/26</small>
+      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 07/11/26 b</small>
       <button class="btn secondary small" onclick="doLogout()">Salir</button>
     </div>
   </div>
@@ -911,7 +911,7 @@ function textoMetaTasa(d){
   if(d.actualizadoEnMs){
     hora = ' '+new Date(d.actualizadoEnMs).toLocaleTimeString('es-VE', { hour:'numeric', minute:'2-digit', hour12:true });
   }
-  return 'Automática · actualizada el '+fmtFecha(d.fecha)+hora;
+  return 'Automática'+(d.fechaValor ? ' · tasa BCV del '+fmtFecha(d.fechaValor) : '')+' · actualizada el '+fmtFecha(d.fecha)+hora;
 }
 function cargarTasaBcvDia(){
   if(!db) return;
@@ -937,9 +937,13 @@ function cargarTasaBcvDia(){
     }
     const metaEl = document.getElementById('tasa-bcv-meta');
     if(metaEl) metaEl.textContent = textoMetaTasa(data);
+    // La cotización que se está armando sigue la tasa nueva aunque la haya cambiado el otro
+    // celular (antes solo se llenaba si estaba vacía). No se toca una cotización guardada
+    // que se está editando ni el campo mientras alguien escribe en él.
     const cotTasa = document.getElementById('cot-tasa');
-    if(cotTasa && !cotTasa.value){
-      cotTasa.value = tasaBcvDia || '';
+    if(cotTasa && tasaBcvDia && String(cotTasa.value) !== String(tasaBcvDia) &&
+       (!cotTasa.value || (!cotizacionEditandoId && document.activeElement !== cotTasa))){
+      cotTasa.value = tasaBcvDia;
       actualizarMontosCotizacion();
     }
     const abTasa = document.getElementById('ab-tasa');
@@ -958,6 +962,30 @@ function cargarTasaBcvDia(){
    tasa cargada hoy y nadie está escribiendo en el campo en ese momento, para no
    pisar lo que alguien ya puso a mano. Si forzado=true (botón "Actualizar"),
    siempre la trae de nuevo y avisa el resultado. */
+/* La tasa más nueva que publicó el BCV. En la tarde el BCV publica la tasa del día hábil
+   siguiente (ej. el viernes en la tarde, la del lunes): "/dolares/oficial" sigue dando la del
+   día hasta el otro día, pero el histórico ya la trae con su fecha valor. Se toma la última
+   del histórico; si falla, la oficial. Devuelve { tasa, fechaValor }. */
+let tasaFechaValorNueva = '';
+function traerUltimaTasaBcv(){
+  return fetch('https://ve.dolarapi.com/v1/historicos/dolares/oficial')
+    .then(function(res){ return res.json(); })
+    .then(function(lista){
+      const ultima = (lista || []).reduce(function(m, x){ return (!m || (x.fecha||'') > (m.fecha||'')) ? x : m; }, null);
+      const tasa = ultima ? Number(ultima.promedio || ultima.venta || ultima.compra) : 0;
+      if(!tasa || isNaN(tasa)) throw new Error('Histórico sin tasa válida');
+      return { tasa: tasa, fechaValor: ultima.fecha || '' };
+    })
+    .catch(function(){
+      return fetch('https://ve.dolarapi.com/v1/dolares/oficial')
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+          const tasa = Number(data.promedio || data.venta || data.compra);
+          if(!tasa || isNaN(tasa)) throw new Error('Respuesta sin tasa válida');
+          return { tasa: tasa, fechaValor: String(data.fechaActualizacion || '').slice(0,10) };
+        });
+    });
+}
 function cargarTasaBcvAutomatica(forzado){
   if(!forzado){
     if(!currentUser) return;
@@ -966,11 +994,10 @@ function cargarTasaBcvAutomatica(forzado){
     if(Date.now() - ultimaConsultaTasa < 10*60*1000) return;
   }
   ultimaConsultaTasa = Date.now();
-  fetch('https://ve.dolarapi.com/v1/dolares/oficial')
-    .then(function(res){ return res.json(); })
-    .then(function(data){
-      const tasa = Number(data.promedio || data.venta || data.compra);
-      if(!tasa || isNaN(tasa)) throw new Error('Respuesta sin tasa válida');
+  traerUltimaTasaBcv()
+    .then(function(r){
+      const tasa = r.tasa;
+      tasaFechaValorNueva = r.fechaValor;
       const inputGlobal = document.getElementById('tasa-bcv-global');
       if(!inputGlobal) return;
       // Misma tasa que ya está guardada hoy: no hace falta escribir nada.
@@ -1023,6 +1050,7 @@ function guardarTasaBcvDia(origen){
       valor: val,
       fecha: hoyLocalISO(),
       origen: origen === 'auto' ? 'auto' : 'manual',
+      fechaValor: origen === 'auto' ? (tasaFechaValorNueva || '') : '',
       actualizadoPor: currentUser.email,
       actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -1525,8 +1553,7 @@ function generarMensajeCotizacion(){
   msg += 'Bs. '+fmtBs(abonarBs)+'\n\n';
   msg += PAGO_INFO.metodo+'\n'+PAGO_INFO.banco+'\nC.I '+PAGO_INFO.ci+'\n'+PAGO_INFO.telefono+'\n\n';
   msg += 'Realizamos envios por:\n'+ENVIOS_EMPRESAS+'\n\n';
-  msg += 'Fecha: '+fmtFecha(fecha)+'\n';
-  msg += 'Tasa BCV: '+fmtDolar(tasa)+'\n\n';
+  msg += 'Fecha: '+fmtFecha(fecha)+'\n\n';
   msg += 'Monto en Bs. Valido hasta 5:00pm de hoy\n\n';
   msg += 'La diferencia del '+(100-pct)+'% se cancela inmediatamente al terminar su pieza o en un plazo máximo de 5 días después de terminada esta.';
 
