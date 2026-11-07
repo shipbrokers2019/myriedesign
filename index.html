@@ -342,6 +342,9 @@
 
 <!-- ====================== APP PRINCIPAL ====================== -->
 <div id="app-screen" class="hidden">
+  <div id="aviso-offline" class="hidden" style="background:#ffb84d;color:#111;text-align:center;font-size:.78rem;font-weight:700;padding:6px 10px">
+    📴 Sin conexión · lo que guardes se sube solo cuando vuelva internet
+  </div>
   <div class="topbar">
     <div>
       <div class="brand">✦ Myriedesign</div>
@@ -349,7 +352,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <!-- Versión: se cambia en cada actualización, para saber si el celular ya tiene la última. -->
-      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 07/11/26 b</small>
+      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 07/11/26 c</small>
       <button class="btn secondary small" onclick="doLogout()">Salir</button>
     </div>
   </div>
@@ -851,6 +854,11 @@ function initFirebase(){
   firebase.initializeApp(firebaseConfig);
   auth = firebase.auth();
   db = firebase.firestore();
+  // Modo sin conexión: el celular guarda una copia de los datos y lo que se cambia sin
+  // internet queda guardado y se sube solo cuando vuelve la conexión.
+  db.enablePersistence({ synchronizeTabs: true }).catch(function(err){
+    console.warn('Sin modo sin conexión en este navegador:', err && err.code);
+  });
   firebaseReady = true;
 
   auth.onAuthStateChanged(function(user){
@@ -1588,6 +1596,33 @@ function linkWhatsApp(numero, mensaje){
   return 'https://web.whatsapp.com/send'+(params.length ? '?'+params.join('&') : '');
 }
 
+/* Sin internet, Firebase guarda el cambio en el celular al instante, pero su promesa no
+   termina hasta que el servidor lo confirma (cuando vuelva la conexión). Para no dejar la
+   pantalla esperando: si no hay conexión (o tarda mucho) se da por guardado en el celular.
+   Devuelve { valor, aviso }: valor = lo que devolvió la promesa (si terminó), aviso = texto
+   a agregar al mensaje cuando quedó pendiente de subir. Los errores reales se siguen avisando. */
+function confirmarEscritura(promesa){
+  const espera = navigator.onLine ? 8000 : 300;
+  return Promise.race([
+    promesa.then(function(v){ return { valor: v, aviso: '' }; }),
+    new Promise(function(res){ setTimeout(function(){
+      res({ valor: undefined, aviso: '\n\n📴 Sin conexión: quedó guardado en el celular y se sube solo cuando vuelva internet.' });
+    }, espera); })
+  ]);
+}
+function actualizarAvisoConexion(){
+  const el = document.getElementById('aviso-offline');
+  if(el) el.classList.toggle('hidden', navigator.onLine);
+}
+window.addEventListener('online', actualizarAvisoConexion);
+window.addEventListener('offline', actualizarAvisoConexion);
+actualizarAvisoConexion();
+if('serviceWorker' in navigator && location.protocol !== 'file:'){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(err){ console.warn('No se pudo activar el modo sin conexión:', err); });
+  });
+}
+
 /* Mientras se guarda, el botón queda bloqueado: con conexión lenta, tocar Guardar
    varias veces creaba una cotización (o venta) repetida por cada toque. */
 function bloquearBotonGuardando(boton, guardando, textoNormal){
@@ -1622,7 +1657,7 @@ function guardarCotizacion(){
   const textoBtn = btn.textContent;
   guardandoCotizacion = true;
   bloquearBotonGuardando(btn, true);
-  let promesa;
+  let promesa, nuevaRef = null;
   if(editandoId){
     promesa = db.collection('cotizaciones').doc(editandoId).update(data);
   } else {
@@ -1630,16 +1665,18 @@ function guardarCotizacion(){
     data.seguimiento = sumarDias(data.fecha, 2);
     data.creadoPor = currentUser.email;
     data.creadoEn = firebase.firestore.FieldValue.serverTimestamp();
-    promesa = db.collection('cotizaciones').add(data);
+    nuevaRef = db.collection('cotizaciones').doc();
+    promesa = nuevaRef.set(data);
   }
   const enVentana = !document.getElementById('modal-cot').classList.contains('hidden');
-  promesa.then(function(ref){
+  confirmarEscritura(promesa).then(function(r){
+    const ref = nuevaRef;
     guardandoCotizacion = false;
     bloquearBotonGuardando(btn, false, textoBtn);
     if(enVentana){
       // Editar cotización (ventana): se cierra al guardar.
       cancelarEdicionCotizacion();
-      alert('Cotización actualizada.');
+      alert('Cotización actualizada.'+r.aviso);
       return;
     }
     // En Cotizar la cotización queda en pantalla para generar el mensaje. Desde ahora
@@ -1648,7 +1685,7 @@ function guardarCotizacion(){
     btn.textContent = '✓ Guardar cambios';
     document.getElementById('cot-titulo').textContent = 'Cotización guardada ✓';
     document.getElementById('cot-btn-nueva').classList.remove('hidden');
-    alert(editandoId ? 'Cambios guardados.' : 'Cotización guardada. Ya podés generar el mensaje.');
+    alert((editandoId ? 'Cambios guardados.' : 'Cotización guardada. Ya podés generar el mensaje.')+r.aviso);
   }).catch(function(err){
     guardandoCotizacion = false;
     bloquearBotonGuardando(btn, false, textoBtn);
@@ -1716,8 +1753,8 @@ function eliminarCotizacion(){
   // El formulario se vacía al toque: si quedaba cargado mientras Firebase confirmaba,
   // tocar Guardar intentaba actualizar una cotización ya borrada ("No document to update").
   cancelarEdicionCotizacion();
-  db.collection('cotizaciones').doc(id).delete().then(function(){
-    alert('Cotización eliminada.');
+  confirmarEscritura(db.collection('cotizaciones').doc(id).delete()).then(function(r){
+    alert('Cotización eliminada.'+r.aviso);
   }).catch(function(err){ alert('Error eliminando la cotización: '+err.message); });
 }
 function cancelarEdicionCotizacion(){
@@ -1941,7 +1978,7 @@ function borrarPorPeriodo(){
       lista.slice(i, i+500).forEach(function(r){ batch.delete(db.collection(coleccion).doc(r.id)); });
       tandas.push(batch.commit());
     }
-    return Promise.all(tandas).then(function(){
+    return confirmarEscritura(Promise.all(tandas)).then(function(){
       borrarCotsCache = null;
       alert('Listo. Se descargó un CSV de respaldo (revisá tus descargas) y se borraron '+cantidad+' '+nombre+'.');
       actualizarConteoBorrar();
@@ -2666,10 +2703,11 @@ function guardarVenta(){
   } else {
     data.creadoPor = currentUser.email;
     data.creadoEn = firebase.firestore.FieldValue.serverTimestamp();
-    promesa = db.collection('ventas').add(data);
+    promesa = db.collection('ventas').doc().set(data);
   }
-  promesa.then(function(){
+  confirmarEscritura(promesa).then(function(r){
     listoGuardar();
+    if(r.aviso) alert('Venta guardada.'+r.aviso);
     if(cotizacionOrigenId){
       db.collection('cotizaciones').doc(cotizacionOrigenId).update({ status: 'Convertida' });
       cotizacionOrigenId = null;
@@ -2680,7 +2718,8 @@ function guardarVenta(){
 function eliminarVenta(){
   if(!ventaActualId) return;
   if(!confirm('¿Eliminar esta venta? Esta acción no se puede deshacer.')) return;
-  db.collection('ventas').doc(ventaActualId).delete().then(function(){ cerrarModalVenta(); });
+  confirmarEscritura(db.collection('ventas').doc(ventaActualId).delete()).then(function(){ cerrarModalVenta(); })
+    .catch(function(err){ alert('Error eliminando la venta: '+err.message); });
 }
 
 /* -------------------- 11) RESUMEN DE VENTA -------------------- */
@@ -3033,13 +3072,13 @@ function cerrarFichaHoy(){
   document.getElementById('modal-hoy').classList.add('hidden');
 }
 function descartarSeguimiento(id){
-  db.collection('cotizaciones').doc(id).update({ seguimientoDescartado: true })
+  confirmarEscritura(db.collection('cotizaciones').doc(id).update({ seguimientoDescartado: true }))
     .then(cerrarFichaHoy)
     .catch(function(err){ alert('No se pudo descartar: '+err.message); });
 }
 function actualizarSeguimiento(id, fecha){
   // Poner una fecha nueva reactiva el seguimiento aunque se hubiera descartado antes.
-  db.collection('cotizaciones').doc(id).update({ seguimiento: fecha, seguimientoDescartado: false })
+  confirmarEscritura(db.collection('cotizaciones').doc(id).update({ seguimiento: fecha, seguimientoDescartado: false }))
     .then(cerrarFichaHoy)
     .catch(function(err){ alert('No se pudo guardar el seguimiento: '+err.message); });
 }
