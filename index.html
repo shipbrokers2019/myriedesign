@@ -352,7 +352,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <!-- Versión: se cambia en cada actualización, para saber si el celular ya tiene la última. -->
-      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 07/11/26 c</small>
+      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 10/11/26</small>
       <button class="btn secondary small" onclick="doLogout()">Salir</button>
     </div>
   </div>
@@ -555,10 +555,22 @@
         <div><label>Hasta</label><input type="date" id="clientes-hasta" onchange="renderClientesLista()"></div>
         <button type="button" class="btn secondary small" id="clientes-fechas-limpiar" onclick="limpiarFechasClientes()">✕</button>
       </div>
+      <!-- Sobre qué fecha filtran Desde/Hasta, y atajos por fecha de entrega. -->
+      <div class="filtros" id="clientes-fechas-por">
+        <button type="button" class="filtro activo" data-por="venta" onclick="elegirFechasPor('venta')">Fecha de venta</button>
+        <button type="button" class="filtro" data-por="entrega" onclick="elegirFechasPor('entrega')">Fecha de entrega</button>
+        <button type="button" class="filtro" onclick="atajoEntrega('atrasadas')">Atrasadas</button>
+        <button type="button" class="filtro" onclick="atajoEntrega('semana')">Esta semana</button>
+        <button type="button" class="filtro" onclick="atajoEntrega('15')">Próximos 15 días</button>
+      </div>
       <div class="clientes-acciones">
         <small class="hint" id="clientes-contador"></small>
         <button type="button" class="btn secondary small" onclick="exportarCSVVentas()">⬇ CSV</button>
-        <button type="button" class="btn secondary small hidden" id="clientes-pdf-taller" onclick="exportarPDFTaller()">🖨 PDF taller</button>
+      </div>
+      <!-- Solo con el filtro Fabricación: lista para montar, que Myried se manda a su WhatsApp. -->
+      <div class="row hidden" id="clientes-fabricacion-acciones" style="margin:6px 0">
+        <button type="button" class="btn small" style="background:#25D366;color:#fff" onclick="enviarListaFabricacion()">💬 Enviar a WhatsApp</button>
+        <button type="button" class="btn secondary small" onclick="copiarListaFabricacion()">📋 Copiar</button>
       </div>
       <div id="ventas-list"><div class="empty-state">Cargando...</div></div>
     </div>
@@ -2020,7 +2032,29 @@ function renderVentasLista(){
    tarjetas cortas con pastillas de color (Vendido / Debe / Negociando / Entregado),
    buscador y filtros que se deslizan de lado. Al tocar una tarjeta abre la ficha. */
 let filtroClientes = 'todos';
-let clientesFiltrados = [];   // lo que se ve en la lista ahora (para el CSV y el PDF taller)
+let clientesFiltrados = [];   // lo que se ve en la lista ahora (para el CSV y la lista de fabricación)
+let fechasPorClientes = 'venta';  // Desde/Hasta filtran por 'venta' o por 'entrega'
+function elegirFechasPor(por){
+  fechasPorClientes = por;
+  document.querySelectorAll('#clientes-fechas-por .filtro[data-por]').forEach(function(b){
+    b.classList.toggle('activo', b.dataset.por === por);
+  });
+  renderClientesLista();
+}
+/* Atajos por fecha de entrega: Atrasadas (hasta ayer), Esta semana (hoy al domingo),
+   Próximos 15 días (hoy a hoy+15). */
+function atajoEntrega(cual){
+  const hoy = hoyLocalISO();
+  let desde = '', hasta = '';
+  if(cual === 'atrasadas'){ hasta = sumarDias(hoy, -1); }
+  else if(cual === 'semana'){
+    const dia = new Date(hoy+'T12:00:00').getDay();   // 0 = domingo
+    desde = hoy; hasta = sumarDias(hoy, dia === 0 ? 0 : 7 - dia);
+  } else { desde = hoy; hasta = sumarDias(hoy, 15); }
+  document.getElementById('clientes-desde').value = desde;
+  document.getElementById('clientes-hasta').value = hasta;
+  elegirFechasPor('entrega');
+}
 function elegirFiltroClientes(filtro){
   filtroClientes = filtro;
   document.querySelectorAll('#clientes-filtros .filtro').forEach(function(b){
@@ -2072,19 +2106,26 @@ function renderClientesLista(){
     });
   }
   const q = sinAcentos(document.getElementById('clientes-buscar').value.trim());
-  // Rango de fechas (fecha de venta, o de cotización en las Negociando)
+  // Rango de fechas: por fecha de venta (o de cotización en las Negociando), o por fecha
+  // de entrega. Por entrega se ordena de la más antigua a la más reciente.
   const desde = document.getElementById('clientes-desde').value;
   const hasta = document.getElementById('clientes-hasta').value;
+  const porEntrega = fechasPorClientes === 'entrega';
+  const fechaDe = function(r){ return porEntrega ? (r.fechaEntrega || '') : r.fecha; };
   const filtrados = registros.filter(function(r){
-    if(desde && (!r.fecha || r.fecha < desde)) return false;
-    if(hasta && (!r.fecha || r.fecha > hasta)) return false;
+    if(desde && (!fechaDe(r) || fechaDe(r) < desde)) return false;
+    if(hasta && (!fechaDe(r) || fechaDe(r) > hasta)) return false;
     if(!q) return true;
     return sinAcentos(r.nombre+' '+(r.celular||'')+' '+descripcionPiezas(r.items)).indexOf(q) !== -1;
   });
-  filtrados.sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
+  if(porEntrega){
+    filtrados.sort(function(a,b){ return (a.fechaEntrega||'9999').localeCompare(b.fechaEntrega||'9999'); });
+  } else {
+    filtrados.sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
+  }
   clientesFiltrados = filtrados;
   document.getElementById('clientes-contador').textContent = filtrados.length+' registro'+(filtrados.length === 1 ? '' : 's');
-  document.getElementById('clientes-pdf-taller').classList.toggle('hidden', filtroClientes !== 'fabricacion');
+  document.getElementById('clientes-fabricacion-acciones').classList.toggle('hidden', filtroClientes !== 'fabricacion');
   if(filtrados.length === 0){ el.innerHTML = '<div class="empty-state">No hay registros con ese filtro.</div>'; return; }
   // En Ventas la tarjeta abre el formulario de venta: la cotización ya prellenada
   // para convertirla, o la venta para editarla (la ficha de seguimiento es solo de Hoy).
@@ -2094,7 +2135,10 @@ function renderClientesLista(){
     const derecha = r.tipo === 'cot'
       ? '<button type="button" class="pill naranja pill-accion" onclick="event.stopPropagation();convertirEnVenta(\''+r.id+'\')">Crear Venta</button>'
       : '';
-    return tarjetaCliente(r, '', accion, derecha);
+    // Por fecha de entrega, cada venta sin entregar muestra su entrega (o el atraso).
+    const extra = (porEntrega && r.tipo === 'venta' && r.status !== 'Enviado' && r.fechaEntrega)
+      ? pillAtraso(r.fechaEntrega, 'Entrega hoy') : '';
+    return tarjetaCliente(r, extra, accion, derecha);
   }).join('');
 }
 /* Número para WhatsApp de una cotización: el campo Celular, o (cotizaciones viejas) la referencia. */
@@ -2107,7 +2151,7 @@ function registroDeCot(c){
 }
 function registroDeVenta(v){
   return { tipo:'venta', id:v.id, nombre:v.nombre || '(sin nombre)', total:v.total,
-    fecha:v.fechaVenta || '', items:v.items, celular:v.celular, saldo:calcularSaldo(v), status:v.status };
+    fecha:v.fechaVenta || '', fechaEntrega:v.fechaEntrega || '', items:v.items, celular:v.celular, saldo:calcularSaldo(v), status:v.status };
 }
 /* Tarjeta corta de cliente (usada en Ventas y en Hoy). pillsExtra va antes de WA
    (ej. "Atrasado 2 días" en los seguimientos). accion: JS al tocarla (por defecto, la ficha de Hoy).
@@ -2825,7 +2869,7 @@ function waResumenVenta(id){
 }
 function copiarResumen(){ copiarTexto(document.getElementById('resumen-texto')); }
 
-/* -------------------- 12) CSV Y PDF TALLER (desde la lista de Ventas) --------------------
+/* -------------------- 12) CSV Y LISTA DE FABRICACIÓN (desde la lista de Ventas) --------------------
    Reemplazan a las viejas pestañas Reportes y Nombres/Dijes: usan lo que esté filtrado
    en la lista (filtro, fechas y buscador). */
 function ventasFiltradasLista(){
@@ -2838,44 +2882,75 @@ function exportarCSVVentas(){
   if(ventas.length === 0){ alert('No hay ventas en la lista para descargar.'); return; }
   descargarRespaldoVentasCSV(ventas, 'ventas_myriedesign_'+hoyISO()+'.csv');
 }
-function exportarPDFTaller(){
-  const filasPdf = filasPDFNombresDijes(ventasFiltradasLista());
+/* Lista de piezas en fabricación para montar en las cadenas: Myried se la manda a su propio
+   WhatsApp. Usa lo filtrado en Ventas (filtro Fabricación, fechas y buscador). Ordenada de la
+   entrega más antigua a la más reciente, agrupada por cliente, sin montos ni teléfonos. */
+const WHATSAPP_MYRIED = '584143939905';
+function textoListaFabricacion(){
+  const ventas = ventasFiltradasLista().filter(function(v){ return v.status === 'Fabricacion'; });
+  if(ventas.length === 0) return '';
+  ventas.sort(function(a,b){
+    const fa = a.fechaEntrega || '9999', fb = b.fechaEntrega || '9999';
+    return fa !== fb ? fa.localeCompare(fb) : String(a.nombre||'').localeCompare(String(b.nombre||''));
+  });
+  const hoy = hoyLocalISO();
+  const piezas = ventas.reduce(function(s,v){
+    return s + (v.items||[]).reduce(function(x,it){ return x + (Number(it.cantidad)||1); }, 0);
+  }, 0);
+  const clientes = {};
+  ventas.forEach(function(v){ clientes[String(v.nombre||'').trim().toLowerCase()] = true; });
+  const fechas = ventas.map(function(v){ return v.fechaEntrega; }).filter(Boolean);
   const desde = document.getElementById('clientes-desde').value;
   const hasta = document.getElementById('clientes-hasta').value;
-  const rango = (desde||hasta) ? ('Del '+(desde?fmtFecha(desde):'...')+' al '+(hasta?fmtFecha(hasta):'...')) : 'Todas las fechas';
+  const ini = (fechasPorClientes === 'entrega' && desde) ? desde : fechas[0];
+  const fin = (fechasPorClientes === 'entrega' && hasta) ? hasta : fechas[fechas.length-1];
 
-  const filasHtml = filasPdf.length ? filasPdf.map(function(f){
-    return '<tr><td>'+escapeHtml(f.cliente)+'</td><td>'+escapeHtml(f.nombre)+'</td><td>'+escapeHtml(f.tipografia)+'</td><td>'+escapeHtml(f.dijes)+'</td></tr>';
-  }).join('') : '<tr><td colspan="4" style="text-align:center">Sin resultados</td></tr>';
+  let msg = '*MYRIEDESIGN — Piezas en fabricación*\n';
+  if(ini || fin) msg += 'Entrega del '+(ini ? fmtFecha(ini) : '...')+' al '+(fin ? fmtFecha(fin) : '...')+'\n';
+  msg += piezas+' pieza'+(piezas===1?'':'s')+' · '+Object.keys(clientes).length+' cliente'+(Object.keys(clientes).length===1?'':'s')+'\n';
 
-  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Nombres/Dijes fabricación</title><style>'+
-    'body{font-family:Arial,sans-serif;padding:24px;color:#111}'+
-    'h1{font-size:18px;margin-bottom:2px}'+
-    '.meta{color:#555;font-size:12px;margin-bottom:16px}'+
-    'table{width:100%;border-collapse:collapse;font-size:13px}'+
-    'th,td{border:1px solid #999;padding:6px 8px;text-align:left}'+
-    'th{background:#eee}'+
-    '</style></head><body>'+
-    '<h1>Myriedesign — Nombres/Dijes en fabricación</h1>'+
-    '<div class="meta">'+rango+' · Generado el '+fmtFecha(hoyISO())+'</div>'+
-    '<table><thead><tr><th>Cliente</th><th>Nombre</th><th>Estilo de caligrafía</th><th>Dijes</th></tr></thead>'+
-    '<tbody>'+filasHtml+'</tbody></table>'+
-    '<script>window.onload=function(){window.print();}<\/script>'+
-    '</body></html>';
-
-  const w = window.open('', '_blank');
-  w.document.open(); w.document.write(html); w.document.close();
-}
-/* Filas del PDF: una por cada nombre/nombre adicional del ítem, con su tipografía y los dijes de la pieza. */
-function filasPDFNombresDijes(filas){
-  const out = [];
-  filas.forEach(function(v){
-    (v.items||[]).forEach(function(it){
-      if(it.nombre) out.push({ cliente:v.nombre||'-', nombre:it.nombre, tipografia:it.tipografiaNombre||'-', dijes:it.dijes||'-' });
-      if(it.nombreAdicional) out.push({ cliente:v.nombre||'-', nombre:it.nombreAdicional, tipografia:it.tipografiaAdicional||'-', dijes:it.dijes||'-' });
+  ventas.forEach(function(v){
+    const f = v.fechaEntrega;
+    const cuando = !f ? 'Sin fecha de entrega' : (f < hoy ? '⚠ '+fechaCorta(f)+' (atrasada)' : fechaCorta(f));
+    msg += '\n━━━━━━━━━━━━\n*'+cuando+' — '+(v.nombre || '(sin nombre)')+'*\n';
+    (v.items||[]).forEach(function(it, i){
+      if(i > 0) msg += '\n';
+      const cant = Number(it.cantidad)||1;
+      msg += '☐ '+[it.cadena, tipoPiezaTexto(it.tipo)].filter(Boolean).join(' · ')+(cant > 1 ? ' (x'+cant+')' : '')+'\n';
+      if(it.tipo === 'grabado'){
+        if(it.tipoMedalla) msg += 'Tipo: '+it.tipoMedalla+'\n';
+        msg += 'Frente: '+(it.caraFrontal ? '*'+it.caraFrontal+'*'+(it.tipografiaFrontal ? ' — '+it.tipografiaFrontal : '') : 'Imagen')+'\n';
+        if(it.caraPosterior) msg += 'Atrás: *'+it.caraPosterior+'*'+(it.tipografiaPosterior ? ' — '+it.tipografiaPosterior : '')+'\n';
+      } else if(it.tipo === 'bisuteria'){
+        if(it.tipoBisuteria) msg += 'Tipo: '+it.tipoBisuteria+'\n';
+      } else {
+        if(it.nombre) msg += 'Nombre: *'+it.nombre+'*'+(it.tipografiaNombre ? ' — '+it.tipografiaNombre : '')+'\n';
+        if(it.nombreAdicional) msg += 'Nombre adicional: *'+it.nombreAdicional+'*'+(it.tipografiaAdicional ? ' — '+it.tipografiaAdicional : '')+'\n';
+        if(it.dijes) msg += 'Dijes: '+it.dijes+'\n';
+      }
+      if(it.notas) msg += 'Notas: '+it.notas+'\n';
     });
   });
-  return out;
+  return msg;
+}
+function enviarListaFabricacion(){
+  const msg = textoListaFabricacion();
+  if(!msg){ alert('No hay piezas en fabricación con ese filtro.'); return; }
+  window.open(linkWhatsApp(WHATSAPP_MYRIED, msg.normalize('NFC')), '_blank');
+}
+function copiarListaFabricacion(){
+  const msg = textoListaFabricacion();
+  if(!msg){ alert('No hay piezas en fabricación con ese filtro.'); return; }
+  const listo = function(){ alert('Lista copiada ✓. Pegala en tu chat de WhatsApp.'); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(msg).then(listo).catch(function(){ copiarConTextarea(msg); listo(); });
+  } else { copiarConTextarea(msg); listo(); }
+}
+function copiarConTextarea(texto){
+  const t = document.createElement('textarea');
+  t.value = texto; document.body.appendChild(t); t.select();
+  try{ document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(t);
 }
 /* -------------------- 12b) PESTAÑA HOY --------------------
    Primera pantalla al abrir la app: a quién escribir, quién debe y qué hay que
