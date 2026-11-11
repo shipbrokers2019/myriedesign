@@ -352,7 +352,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <!-- Versión: se cambia en cada actualización, para saber si el celular ya tiene la última. -->
-      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 10/11/26</small>
+      <small id="app-version" style="color:var(--muted);font-size:.7rem">v. 11/11/26</small>
       <button class="btn secondary small" onclick="doLogout()">Salir</button>
     </div>
   </div>
@@ -378,6 +378,15 @@
       <div class="hoy-stat"><small>En conversación</small><b id="hoy-n-conversacion">0</b></div>
       <div class="hoy-stat"><small>Cobrado este mes</small><b id="hoy-n-cobrado" style="color:var(--success)">$0.00</b></div>
     </div>
+    <!-- Buscador (igual al de Ventas): mientras hay algo escrito, los resultados reemplazan las secciones. -->
+    <div style="margin:0 12px">
+      <input type="search" id="hoy-buscar" class="clientes-buscar" placeholder="Buscar cliente, teléfono, pieza o nombre grabado" oninput="renderBusquedaHoy()">
+    </div>
+    <div class="card hidden" id="hoy-resultados-card">
+      <small class="hint" id="hoy-resultados-contador"></small>
+      <div id="hoy-resultados"></div>
+    </div>
+    <div id="hoy-secciones">
     <div class="card">
       <h2>Escribir hoy</h2>
       <small class="hint">Cotizaciones a las que toca hacer seguimiento, empezando por la más atrasada.</small>
@@ -391,6 +400,7 @@
       <h2>Entregas próximas</h2>
       <small class="hint">Ventas no entregadas con entrega en los próximos 7 días o ya atrasada.</small>
       <div id="hoy-entregas"><div class="empty-state">Cargando...</div></div>
+    </div>
     </div>
   </div>
 
@@ -540,7 +550,7 @@
     </div>
     <div class="card">
       <h2>Clientes</h2>
-      <input type="search" id="clientes-buscar" class="clientes-buscar" placeholder="Buscar cliente, teléfono o producto" oninput="renderClientesLista()">
+      <input type="search" id="clientes-buscar" class="clientes-buscar" placeholder="Buscar cliente, teléfono, pieza o nombre grabado" oninput="renderClientesLista()">
       <div class="filtros" id="clientes-filtros">
         <button type="button" class="filtro activo" data-filtro="todos" onclick="elegirFiltroClientes('todos')">Todos</button>
         <button type="button" class="filtro" data-filtro="deben" onclick="elegirFiltroClientes('deben')">Deben</button>
@@ -2088,45 +2098,124 @@ function pillWhatsApp(numero, ventaId){
   const click = ventaId ? 'event.stopPropagation();event.preventDefault();waResumenVenta(\''+ventaId+'\')' : 'event.stopPropagation()';
   return '<a class="pill wa" href="'+linkWhatsApp(numero, '')+'" target="_blank" onclick="'+click+'">WA</a>';
 }
+/* Buscador de Ventas.
+   - Busca por INICIO de palabra: "ana" encuentra Ana, Anabel, Anais, pero no Ivana ni
+     "Cadena italiana". Con varias palabras, todas tienen que aparecer. Los números
+     (teléfono) se buscan en cualquier parte del número.
+   - Mientras hay algo escrito busca en TODAS las ventas y cotizaciones, sin importar el
+     filtro de estado ni las fechas; al borrar la búsqueda vuelve el filtro.
+   - Cada tarjeta muestra por qué salió (ej. "🔎 Nombre: Ana") y primero van las que
+     coinciden por el nombre grabado de la pieza. */
+function camposBusqueda(r){
+  const campos = [
+    { etiqueta:'Cliente', texto:r.nombre, prioridad:1 },
+    { etiqueta:'Teléfono', texto:r.celular, prioridad:3 }
+  ];
+  (r.items||[]).forEach(function(it){
+    campos.push({ etiqueta:'Nombre', texto:it.nombre, prioridad:0 });
+    campos.push({ etiqueta:'Nombre adic.', texto:it.nombreAdicional, prioridad:0 });
+    campos.push({ etiqueta:'Frente', texto:it.caraFrontal, prioridad:0 });
+    campos.push({ etiqueta:'Atrás', texto:it.caraPosterior, prioridad:0 });
+    campos.push({ etiqueta:'Pieza', texto:it.cadena, prioridad:2 });
+    campos.push({ etiqueta:'Dijes', texto:it.dijes, prioridad:2 });
+    campos.push({ etiqueta:'Tipo', texto:it.tipoBisuteria || it.tipoMedalla, prioridad:2 });
+  });
+  return campos.filter(function(c){ return c.texto; });
+}
+function terminoEnTexto(termino, texto){
+  if(/^\d+$/.test(termino)) return String(texto).replace(/\D/g,'').indexOf(termino) !== -1;
+  return sinAcentos(texto).split(/[^a-z0-9ñ]+/).some(function(palabra){ return palabra.indexOf(termino) === 0; });
+}
+/* Devuelve null si no coincide, o { prioridad, motivo } con el mejor campo que coincidió. */
+function coincidenciaBusqueda(r, terminos){
+  const campos = camposBusqueda(r);
+  const todos = terminos.every(function(t){ return campos.some(function(c){ return terminoEnTexto(t, c.texto); }); });
+  if(!todos) return null;
+  let mejor = null;
+  campos.forEach(function(c){
+    if(terminos.some(function(t){ return terminoEnTexto(t, c.texto); }) && (!mejor || c.prioridad < mejor.prioridad)) mejor = c;
+  });
+  return { prioridad: mejor.prioridad, motivo: mejor.etiqueta+': '+mejor.texto };
+}
+/* Buscador de Hoy: misma forma de buscar que Ventas, en todas las ventas y cotizaciones.
+   Mientras hay algo escrito esconde Escribir hoy / Deben / Entregas y muestra los
+   resultados; tocar uno abre la ficha de Hoy. */
+function renderBusquedaHoy(){
+  const input = document.getElementById('hoy-buscar');
+  if(!input) return;
+  const texto = input.value.trim();
+  const terminos = sinAcentos(texto).split(/[^a-z0-9ñ]+/).filter(Boolean);
+  const buscando = terminos.length > 0;
+  document.getElementById('hoy-secciones').classList.toggle('hidden', buscando);
+  document.getElementById('hoy-resultados-card').classList.toggle('hidden', !buscando);
+  if(!buscando) return;
+  const lista = [];
+  cotizacionesCache.forEach(function(c){ lista.push(registroDeCot(c)); });
+  todasLasVentas.forEach(function(v){ lista.push(registroDeVenta(v)); });
+  const encontrados = lista.filter(function(r){
+    r.coincidencia = coincidenciaBusqueda(r, terminos);
+    return !!r.coincidencia;
+  });
+  encontrados.sort(function(a,b){ return (a.coincidencia.prioridad - b.coincidencia.prioridad) || b.fecha.localeCompare(a.fecha); });
+  document.getElementById('hoy-resultados-contador').textContent =
+    '🔎 '+encontrados.length+' resultado'+(encontrados.length === 1 ? '' : 's')+' · borrá la búsqueda para volver a Hoy';
+  document.getElementById('hoy-resultados').innerHTML = encontrados.length
+    ? encontrados.map(function(r){
+        return tarjetaCliente(r, '<span class="pill info">🔎 '+escapeHtml(r.coincidencia.motivo)+'</span>');
+      }).join('')
+    : '<div class="empty-state">No se encontró "'+escapeHtml(texto)+'".</div>';
+}
 function renderClientesLista(){
   const el = document.getElementById('ventas-list');
   if(!el) return;
+  const textoBusqueda = document.getElementById('clientes-buscar').value.trim();
+  const terminos = sinAcentos(textoBusqueda).split(/[^a-z0-9ñ]+/).filter(Boolean);
+  const buscando = terminos.length > 0;
   const registros = [];
-  if(filtroClientes === 'todos' || filtroClientes === 'negociando'){
+  if(buscando || filtroClientes === 'todos' || filtroClientes === 'negociando'){
     cotizacionesCache.forEach(function(c){ registros.push(registroDeCot(c)); });
   }
-  if(filtroClientes !== 'negociando'){
+  if(buscando || filtroClientes !== 'negociando'){
     todasLasVentas.forEach(function(v){
-      if(filtroClientes === 'deben' && !(calcularSaldo(v) > 0.004)) return;
-      if(filtroClientes === 'vendido' && v.status === 'Enviado') return;
-      if(filtroClientes === 'entregado' && v.status !== 'Enviado') return;
-      if(filtroClientes === 'fabricacion' && v.status !== 'Fabricacion') return;
-      if(filtroClientes === 'listo' && v.status !== 'Listo') return;
+      if(!buscando){
+        if(filtroClientes === 'deben' && !(calcularSaldo(v) > 0.004)) return;
+        if(filtroClientes === 'vendido' && v.status === 'Enviado') return;
+        if(filtroClientes === 'entregado' && v.status !== 'Enviado') return;
+        if(filtroClientes === 'fabricacion' && v.status !== 'Fabricacion') return;
+        if(filtroClientes === 'listo' && v.status !== 'Listo') return;
+      }
       registros.push(registroDeVenta(v));
     });
   }
-  const q = sinAcentos(document.getElementById('clientes-buscar').value.trim());
   // Rango de fechas: por fecha de venta (o de cotización en las Negociando), o por fecha
-  // de entrega. Por entrega se ordena de la más antigua a la más reciente.
-  const desde = document.getElementById('clientes-desde').value;
-  const hasta = document.getElementById('clientes-hasta').value;
+  // de entrega. Por entrega se ordena de la más antigua a la más reciente. Buscando, no aplica.
+  const desde = buscando ? '' : document.getElementById('clientes-desde').value;
+  const hasta = buscando ? '' : document.getElementById('clientes-hasta').value;
   const porEntrega = fechasPorClientes === 'entrega';
   const fechaDe = function(r){ return porEntrega ? (r.fechaEntrega || '') : r.fecha; };
   const filtrados = registros.filter(function(r){
     if(desde && (!fechaDe(r) || fechaDe(r) < desde)) return false;
     if(hasta && (!fechaDe(r) || fechaDe(r) > hasta)) return false;
-    if(!q) return true;
-    return sinAcentos(r.nombre+' '+(r.celular||'')+' '+descripcionPiezas(r.items)).indexOf(q) !== -1;
+    if(!buscando) return true;
+    r.coincidencia = coincidenciaBusqueda(r, terminos);
+    return !!r.coincidencia;
   });
-  if(porEntrega){
+  if(buscando){
+    filtrados.sort(function(a,b){ return (a.coincidencia.prioridad - b.coincidencia.prioridad) || b.fecha.localeCompare(a.fecha); });
+  } else if(porEntrega){
     filtrados.sort(function(a,b){ return (a.fechaEntrega||'9999').localeCompare(b.fechaEntrega||'9999'); });
   } else {
     filtrados.sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
   }
   clientesFiltrados = filtrados;
-  document.getElementById('clientes-contador').textContent = filtrados.length+' registro'+(filtrados.length === 1 ? '' : 's');
-  document.getElementById('clientes-fabricacion-acciones').classList.toggle('hidden', filtroClientes !== 'fabricacion');
-  if(filtrados.length === 0){ el.innerHTML = '<div class="empty-state">No hay registros con ese filtro.</div>'; return; }
+  document.getElementById('clientes-contador').textContent = buscando
+    ? '🔎 '+filtrados.length+' resultado'+(filtrados.length === 1 ? '' : 's')+' en todo · borrá la búsqueda para volver al filtro'
+    : filtrados.length+' registro'+(filtrados.length === 1 ? '' : 's');
+  document.getElementById('clientes-fabricacion-acciones').classList.toggle('hidden', buscando || filtroClientes !== 'fabricacion');
+  if(filtrados.length === 0){
+    el.innerHTML = '<div class="empty-state">'+(buscando ? 'No se encontró "'+escapeHtml(textoBusqueda)+'".' : 'No hay registros con ese filtro.')+'</div>';
+    return;
+  }
   // En Ventas la tarjeta abre el formulario de venta: la cotización ya prellenada
   // para convertirla, o la venta para editarla (la ficha de seguimiento es solo de Hoy).
   el.innerHTML = filtrados.map(function(r){
@@ -2136,8 +2225,13 @@ function renderClientesLista(){
       ? '<button type="button" class="pill naranja pill-accion" onclick="event.stopPropagation();convertirEnVenta(\''+r.id+'\')">Crear Venta</button>'
       : '';
     // Por fecha de entrega, cada venta sin entregar muestra su entrega (o el atraso).
-    const extra = (porEntrega && r.tipo === 'venta' && r.status !== 'Enviado' && r.fechaEntrega)
+    let extra = (!buscando && porEntrega && r.tipo === 'venta' && r.status !== 'Enviado' && r.fechaEntrega)
       ? pillAtraso(r.fechaEntrega, 'Entrega hoy') : '';
+    if(buscando) extra += '<span class="pill info">🔎 '+escapeHtml(r.coincidencia.motivo)+'</span>';
+    // Listo y debe: aviso de pieza lista con la diferencia, directo desde la tarjeta.
+    if(r.tipo === 'venta' && r.status === 'Listo' && r.saldo > 0.004){
+      extra += '<span class="pill listo" style="cursor:pointer" onclick="event.stopPropagation();avisarListo(\''+r.id+'\')">💬 Avisar listo</span>';
+    }
     return tarjetaCliente(r, extra, accion, derecha);
   }).join('');
 }
@@ -2378,12 +2472,13 @@ function fotosDataUrl(lista){
 }
 function mensajePedidoListo(d){
   let msg = saludoSegunHora()+(d.nombre ? ', Sr./Sra. '+d.nombre : '')+'. Le escribimos de Myriedesign.\n\n'+
-    '¡Su pedido está listo para ser entregado! ✨ Le anexamos una foto de su pieza; esperamos que sea de su agrado.\n\n'+
+    '¡Su pieza está lista! ✨ Le anexamos una foto; esperamos que sea de su agrado.\n\n'+
     'Pedido: '+productosCortos(d.items)+'\n\n';
   if(d.saldo > 0.004){
-    msg += 'Diferencia restante: *$'+d.saldo.toFixed(2)+'*\n';
-    if(tasaBcvDia) msg += 'En bolívares: *Bs. '+fmtBs(d.saldo*tasaBcvDia)+'*\n';
-    msg += '\n'+PAGO_INFO.metodo+'\n'+PAGO_INFO.banco+'\nC.I. '+PAGO_INFO.ci+'\n'+PAGO_INFO.telefono+'\n\n';
+    // Bs. con la tasa BCV del momento en que se genera el mensaje (sin tasa cargada, solo $).
+    msg += 'Tiene una diferencia pendiente de *$'+d.saldo.toFixed(2)+'*'+
+      (tasaBcvDia ? ' (*Bs. '+fmtBs(d.saldo*tasaBcvDia)+'*)' : '')+' para poder enviársela.\n\n';
+    msg += PAGO_INFO.metodo+'\n'+PAGO_INFO.banco+'\nC.I. '+PAGO_INFO.ci+'\n'+PAGO_INFO.telefono+'\n\n';
     if(tasaBcvDia) msg += 'Monto en bolívares válido hasta las 5:00 pm del día de hoy.\n\n';
   } else {
     msg += 'Su pedido ya se encuentra pagado en su totalidad.\n\n';
@@ -3046,6 +3141,7 @@ function renderHoy(){
   if(fichaHoyActual && !document.getElementById('modal-hoy').classList.contains('hidden')){
     abrirFichaHoy(fichaHoyActual.tipo, fichaHoyActual.id);
   }
+  renderBusquedaHoy();
 }
 
 /* Mensajes que quedan escritos en WhatsApp desde la ficha de Hoy. */
